@@ -1,3 +1,4 @@
+#include <cglm/cglm.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,12 +32,41 @@ static const struct wl_shm_listener shm_listener = {
     .format = shm_format,
 };
 
+static void handle_ray_intersection(
+    struct zsurface* surface, struct view_ray_intersection_result result)
+{
+  if (surface->enter_view && surface->enter_view != result.view) {
+    if (surface->interface->pointer_leave)
+      surface->interface->pointer_leave(surface->data, surface->enter_view);
+  }
+
+  if (result.view && surface->enter_view != result.view) {
+    if (surface->interface->pointer_enter)
+      surface->interface->pointer_enter(
+          surface->data, result.view, result.view_x, result.view_y);
+  }
+
+  if (result.view && surface->enter_view == result.view) {
+    if (surface->interface->pointer_motion)
+      surface->interface->pointer_motion(
+          surface->data, result.view, result.view_x, result.view_y);
+  }
+
+  surface->enter_view = result.view;
+}
+
 static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
     struct z11_cuboid_window* cuboid_window, wl_fixed_t ray_origin_x,
     wl_fixed_t ray_origin_y, wl_fixed_t ray_origin_z,
     wl_fixed_t ray_direction_x, wl_fixed_t ray_direction_y,
     wl_fixed_t ray_direction_z)
 {
+  UNUSED(ray);
+  UNUSED(serial);
+  UNUSED(cuboid_window);
+  struct zsurface* surface = data;
+  if (surface->toplevel == NULL) return;
+
   union fixed_flt origin_x, origin_y, origin_z, direction_x, direction_y,
       direction_z;
 
@@ -47,14 +77,13 @@ static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
   direction_y.fixed = ray_direction_y;
   direction_z.fixed = ray_direction_z;
 
-  struct zsurface* surface = data;
-  UNUSED(surface);
-  UNUSED(ray);
-  UNUSED(serial);
-  UNUSED(cuboid_window);
-  zsurface_log("[enter] (%f, %f, %f) - (%f, %f, %f)\n", origin_x.flt,
-      origin_y.flt, origin_z.flt, direction_x.flt, direction_y.flt,
-      direction_z.flt);
+  vec3 origin = {origin_x.flt, origin_y.flt, origin_z.flt};
+  vec3 direction = {direction_x.flt, direction_y.flt, direction_z.flt};
+
+  struct view_ray_intersection_result result =
+      view_ray_intersection(origin, direction, &surface->view_list);
+
+  handle_ray_intersection(surface, result);
 }
 
 static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
@@ -62,6 +91,11 @@ static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
     wl_fixed_t ray_direction_x, wl_fixed_t ray_direction_y,
     wl_fixed_t ray_direction_z)
 {
+  UNUSED(ray);
+  UNUSED(time);
+  struct zsurface* surface = data;
+  if (surface->toplevel == NULL) return;
+
   union fixed_flt origin_x, origin_y, origin_z, direction_x, direction_y,
       direction_z;
 
@@ -72,23 +106,29 @@ static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
   direction_y.fixed = ray_direction_y;
   direction_z.fixed = ray_direction_z;
 
-  struct zsurface* surface = data;
-  UNUSED(surface);
-  UNUSED(ray);
-  UNUSED(time);
-  zsurface_log("[motion] (%f, %f, %f) - (%f, %f, %f)\n", origin_x.flt,
-      origin_y.flt, origin_z.flt, direction_x.flt, direction_y.flt,
-      direction_z.flt);
+  vec3 origin = {origin_x.flt, origin_y.flt, origin_z.flt};
+  vec3 direction = {direction_x.flt, direction_y.flt, direction_z.flt};
+
+  struct view_ray_intersection_result result =
+      view_ray_intersection(origin, direction, &surface->view_list);
+
+  handle_ray_intersection(surface, result);
 }
 
 static void ray_leave(void* data, struct z11_ray* ray, uint32_t serial,
     struct z11_cuboid_window* cuboid_window)
 {
-  struct zsurface* surface = data;
-  UNUSED(surface);
   UNUSED(ray);
   UNUSED(serial);
   UNUSED(cuboid_window);
+  struct zsurface* surface = data;
+  struct view_ray_intersection_result result = {
+      .view = NULL,
+      .view_x = 0,
+      .view_y = 0,
+  };
+
+  handle_ray_intersection(surface, result);
 }
 
 static void ray_button(void* data, struct z11_ray* ray, uint32_t serial,
@@ -195,6 +235,8 @@ struct zsurface* zsurface_create(
   if (surface->registry == NULL) goto out_display;
 
   wl_registry_add_listener(surface->registry, &registry_listener, surface);
+
+  wl_list_init(&surface->view_list);
 
   return surface;
 

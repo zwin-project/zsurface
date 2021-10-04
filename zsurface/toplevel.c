@@ -46,6 +46,8 @@ struct zsurface_toplevel* zsurface_toplevel_create(
   toplevel->view = zsurface_view_create(toplevel, 0, 0);
   if (toplevel->view == NULL) goto out_toplevel;
 
+  wl_list_insert(&surface->view_list, &toplevel->view->link);
+
   return toplevel;
 
 out_toplevel:
@@ -59,6 +61,7 @@ out:
 
 void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel)
 {
+  wl_list_remove(&toplevel->view->link);
   zsurface_view_destroy(toplevel->view);
   z11_cuboid_window_destroy(toplevel->cuboid_window);
   z11_virtual_object_destroy(toplevel->virtual_object);

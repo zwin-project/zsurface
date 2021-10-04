@@ -36,7 +36,12 @@ struct zsurface;
 
 struct zsurface_interface {
   void (*seat_capability)(
-      struct zsurface* surface, void* data, uint32_t capability);
+      void* data, struct zsurface* surface, uint32_t capability);
+  void (*pointer_enter)(
+      void* data, struct zsurface_view* view, float view_x, float view_y);
+  void (*pointer_motion)(
+      void* data, struct zsurface_view* view, float view_x, float view_y);
+  void (*pointer_leave)(void* data, struct zsurface_view* view);
 };
 
 struct zsurface* zsurface_create(

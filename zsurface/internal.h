@@ -1,6 +1,7 @@
 #ifndef ZSURFACE_INTERNAL
 #define ZSURFACE_INTERNAL
 
+#include <cglm/cglm.h>
 #include <stdlib.h>
 #include <wayland-client.h>
 #include <wl_zext_client.h>
@@ -45,6 +46,7 @@ struct view_rect {
 
 struct zsurface_view {
   struct zsurface_toplevel* toplevel;
+  struct wl_list link;
 
   float width;
   float height;
@@ -95,9 +97,11 @@ void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel);
 /* zsurface */
 
 struct zsurface {
+  struct wl_list view_list;
   struct zsurface_interface* interface;
   void* data;
   struct zsurface_toplevel* toplevel;  // nullable
+  struct zsurface_view* enter_view;    // nullable
 
   struct wl_display* display;
   struct wl_registry* registry;
@@ -109,5 +113,15 @@ struct zsurface {
   struct z11_seat* seat;
   struct z11_ray* ray;  // nullable
 };
+
+/* view - ray intersection*/
+
+struct view_ray_intersection_result {
+  float view_x, view_y;        // local coord; (0, 0) == (left, top)
+  struct zsurface_view* view;  // null when no intersection
+};
+
+struct view_ray_intersection_result view_ray_intersection(
+    vec3 origin, vec3 direction, struct wl_list* view_list);
 
 #endif  //  ZSURFACE_INTERNAL

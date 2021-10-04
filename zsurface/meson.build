@@ -4,10 +4,11 @@ deps_zsurface = [
 ]
 
 srcs_zsurface = files([
-  'zsurface.c',
-  'view.c',
   'util.c',
   'toplevel.c',
+  'view.c',
+  'view_ray_intersection.c',
+  'zsurface.c',
 ]) + [
   z11_protocol_c,
   z11_client_protocol_h,
