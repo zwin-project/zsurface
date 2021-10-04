@@ -9,8 +9,8 @@ project(
 
 public_inc = include_directories('include')
 
-wayland_server_dep = dependency('wayland-server')
 wayland_client_dep = dependency('wayland-client')
 
+subdir('protocol')
 subdir('zsurface')
 subdir('example')
