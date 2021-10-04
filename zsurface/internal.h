@@ -31,10 +31,6 @@ struct vertex {
   struct uv_cood uv;
 };
 
-struct color_bgra {
-  uint8_t b, g, r, a;
-};
-
 /* zsurface view */
 
 struct zsurface_toplevel;
@@ -56,6 +52,7 @@ struct zsurface_view {
   int fd;
   void* shm_data;
   size_t shm_data_len;
+  struct wl_shm_pool* pool;
 
   struct z11_opengl_render_component* render_component;
 
@@ -67,16 +64,16 @@ struct zsurface_view {
 
   struct z11_opengl_texture_2d* texture;
   struct wl_zext_raw_buffer* texture_raw_buffer;
-  struct color_bgra* texture_data;
+  struct zsurface_color_bgra* texture_data;
   uint32_t texture_width;
   uint32_t texture_height;
 };
 
-struct zsurface_view* zsurface_view_create(
-    struct zsurface_toplevel* toplevel, float width, float height);
-
 void zsurface_view_resize(
     struct zsurface_view* view, float width, float height);
+
+struct zsurface_view* zsurface_view_create(
+    struct zsurface_toplevel* toplevel, float width, float height);
 
 void zsurface_view_destroy(struct zsurface_view* view);
 

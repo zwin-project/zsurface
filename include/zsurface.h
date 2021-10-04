@@ -7,6 +7,29 @@
 
 struct zsurface_view;
 
+struct zsurface_color_bgra {
+  uint8_t b, g, r, a;
+};
+
+typedef void (*zsurface_view_frame_callback_func_t)(
+    void* data, uint32_t callback_time);
+
+void zsurface_view_add_frame_callback(struct zsurface_view* view,
+    zsurface_view_frame_callback_func_t done_func, void* data);
+
+struct zsurface_color_bgra* zsurface_view_get_texture_data(
+    struct zsurface_view* view);
+
+uint32_t zsurface_view_get_texture_width(struct zsurface_view* view);
+
+uint32_t zsurface_view_get_texture_height(struct zsurface_view* view);
+
+// return -1 when failed to trancate a shared memory file
+int zsurface_view_resize_texture(
+    struct zsurface_view* view, uint32_t width, uint32_t height);
+
+void zsurface_view_commit(struct zsurface_view* view);
+
 /* zsurface */
 
 struct zsurface;

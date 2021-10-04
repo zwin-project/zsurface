@@ -52,7 +52,7 @@ static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
   UNUSED(ray);
   UNUSED(serial);
   UNUSED(cuboid_window);
-  fprintf(stderr, "[enter] (%f, %f, %f) - (%f, %f, %f)\n", origin_x.flt,
+  zsurface_log("[enter] (%f, %f, %f) - (%f, %f, %f)\n", origin_x.flt,
       origin_y.flt, origin_z.flt, direction_x.flt, direction_y.flt,
       direction_z.flt);
 }
@@ -76,7 +76,7 @@ static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
   UNUSED(surface);
   UNUSED(ray);
   UNUSED(time);
-  fprintf(stderr, "[motion] (%f, %f, %f) - (%f, %f, %f)\n", origin_x.flt,
+  zsurface_log("[motion] (%f, %f, %f) - (%f, %f, %f)\n", origin_x.flt,
       origin_y.flt, origin_z.flt, direction_x.flt, direction_y.flt,
       direction_z.flt);
 }
@@ -117,13 +117,13 @@ static void seat_capability(
   UNUSED(ray_listener);
   struct zsurface* surface = data;
 
-  // if (capabilities & Z11_SEAT_CAPABILITY_RAY) {
-  //   surface->ray = z11_seat_get_ray(seat);
-  //   z11_ray_add_listener(surface->ray, &ray_listener, surface);
-  // } else {
-  //   if (surface->ray) z11_ray_destroy(surface->ray);
-  //   surface->ray = NULL;
-  // }
+  if (capabilities & Z11_SEAT_CAPABILITY_RAY) {
+    surface->ray = z11_seat_get_ray(seat);
+    z11_ray_add_listener(surface->ray, &ray_listener, surface);
+  } else {
+    if (surface->ray) z11_ray_destroy(surface->ray);
+    surface->ray = NULL;
+  }
 
   // TODO: Handle keyboard
 
