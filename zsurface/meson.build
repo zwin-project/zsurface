@@ -1,5 +1,6 @@
 deps_zsurface = [
   wayland_client_dep,
+  cglm_dep,
 ]
 
 srcs_zsurface = files([
