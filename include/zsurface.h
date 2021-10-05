@@ -30,6 +30,13 @@ int zsurface_view_resize_texture(
 
 void zsurface_view_commit(struct zsurface_view* view);
 
+/* zsurface toplevel */
+
+struct zsurface_toplevel;
+
+struct zsurface_view* zsurface_toplevel_get_view(
+    struct zsurface_toplevel* toplevel);
+
 /* zsurface */
 
 struct zsurface;
@@ -39,9 +46,8 @@ struct zsurface_interface {
       void* data, struct zsurface* surface, uint32_t capability);
   void (*pointer_enter)(
       void* data, struct zsurface_view* view, float view_x, float view_y);
-  void (*pointer_motion)(
-      void* data, struct zsurface_view* view, float view_x, float view_y);
-  void (*pointer_leave)(void* data, struct zsurface_view* view);
+  void (*pointer_motion)(void* data, float view_x, float view_y);
+  void (*pointer_leave)(void* data);
 };
 
 struct zsurface* zsurface_create(
@@ -57,12 +63,11 @@ struct zsurface_toplevel_option {
   float height;
 };
 
-struct zsurface_view* zsurface_create_toplevel_view(
+struct zsurface_toplevel* zsurface_create_toplevel_view(
     struct zsurface* surface, struct zsurface_toplevel_option option);
 
-void zsurface_remove_toplevel_view(struct zsurface* surface);
-
-struct zsurface_view* zsurface_get_toplevel_view(struct zsurface* surface);
+void zsurface_destroy_toplevel_view(
+    struct zsurface* surface, struct zsurface_toplevel* toplevel);
 
 void zsurface_run(struct zsurface* surface);
 

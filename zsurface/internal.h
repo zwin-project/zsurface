@@ -47,7 +47,6 @@ struct view_rect {
 
 struct zsurface_view {
   struct zsurface_toplevel* toplevel;
-  struct wl_list link;
 
   float width;
   float height;
@@ -85,6 +84,7 @@ void zsurface_view_destroy(struct zsurface_view* view);
 struct zsurface_toplevel {
   struct zsurface* surface;
   struct zsurface_view* view;
+  struct wl_list link;
 
   struct z11_virtual_object* virtual_object;
   struct z11_cuboid_window* cuboid_window;
@@ -98,11 +98,11 @@ void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel);
 /* zsurface */
 
 struct zsurface {
-  struct wl_list view_list;
   struct zsurface_interface* interface;
   void* data;
-  struct zsurface_toplevel* toplevel;  // nullable
-  struct zsurface_view* enter_view;    // nullable
+  struct wl_list toplevel_list;
+  struct zsurface_view* enter_view;          // nullable
+  struct zsurface_toplevel* enter_toplevel;  // nullable
 
   struct wl_display* display;
   struct wl_registry* registry;
@@ -123,6 +123,6 @@ struct view_ray_intersection_result {
 };
 
 struct view_ray_intersection_result view_ray_intersection(
-    vec3 origin, vec3 direction, struct wl_list* view_list);
+    vec3 origin, vec3 direction, struct zsurface_toplevel* toplevel);
 
 #endif  //  ZSURFACE_INTERNAL

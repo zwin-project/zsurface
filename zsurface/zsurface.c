@@ -32,12 +32,23 @@ static const struct wl_shm_listener shm_listener = {
     .format = shm_format,
 };
 
+static struct zsurface_toplevel* zsurface_find_toplevel_by_cuboid_window(
+    struct zsurface* surface, struct z11_cuboid_window* cuboid_window)
+{
+  struct zsurface_toplevel* toplevel;
+  wl_list_for_each(toplevel, &surface->toplevel_list, link)
+  {
+    if (toplevel->cuboid_window == cuboid_window) return toplevel;
+  }
+  return NULL;
+}
+
 static void handle_ray_intersection(
     struct zsurface* surface, struct view_ray_intersection_result result)
 {
   if (surface->enter_view && surface->enter_view != result.view) {
     if (surface->interface->pointer_leave)
-      surface->interface->pointer_leave(surface->data, surface->enter_view);
+      surface->interface->pointer_leave(surface->data);
   }
 
   if (result.view && surface->enter_view != result.view) {
@@ -49,7 +60,7 @@ static void handle_ray_intersection(
   if (result.view && surface->enter_view == result.view) {
     if (surface->interface->pointer_motion)
       surface->interface->pointer_motion(
-          surface->data, result.view, result.view_x, result.view_y);
+          surface->data, result.view_x, result.view_y);
   }
 
   surface->enter_view = result.view;
@@ -65,7 +76,10 @@ static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
   UNUSED(serial);
   UNUSED(cuboid_window);
   struct zsurface* surface = data;
-  if (surface->toplevel == NULL) return;
+  struct zsurface_toplevel* toplevel;
+  toplevel = zsurface_find_toplevel_by_cuboid_window(surface, cuboid_window);
+  surface->enter_toplevel = toplevel;
+  if (toplevel == NULL) return;
 
   union fixed_flt origin_x, origin_y, origin_z, direction_x, direction_y,
       direction_z;
@@ -81,7 +95,7 @@ static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
   vec3 direction = {direction_x.flt, direction_y.flt, direction_z.flt};
 
   struct view_ray_intersection_result result =
-      view_ray_intersection(origin, direction, &surface->view_list);
+      view_ray_intersection(origin, direction, toplevel);
 
   handle_ray_intersection(surface, result);
 }
@@ -94,7 +108,7 @@ static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
   UNUSED(ray);
   UNUSED(time);
   struct zsurface* surface = data;
-  if (surface->toplevel == NULL) return;
+  if (surface->enter_toplevel == NULL) return;
 
   union fixed_flt origin_x, origin_y, origin_z, direction_x, direction_y,
       direction_z;
@@ -110,7 +124,7 @@ static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
   vec3 direction = {direction_x.flt, direction_y.flt, direction_z.flt};
 
   struct view_ray_intersection_result result =
-      view_ray_intersection(origin, direction, &surface->view_list);
+      view_ray_intersection(origin, direction, surface->enter_toplevel);
 
   handle_ray_intersection(surface, result);
 }
@@ -122,6 +136,7 @@ static void ray_leave(void* data, struct z11_ray* ray, uint32_t serial,
   UNUSED(serial);
   UNUSED(cuboid_window);
   struct zsurface* surface = data;
+  surface->enter_toplevel = NULL;
   struct view_ray_intersection_result result = {
       .view = NULL,
       .view_x = 0,
@@ -226,7 +241,7 @@ struct zsurface* zsurface_create(
 
   surface->interface = interface;
   surface->data = data;
-  surface->toplevel = NULL;
+  wl_list_init(&surface->toplevel_list);
 
   surface->display = wl_display_connect(socket);
   if (surface->display == NULL) goto out_surface;
@@ -235,8 +250,6 @@ struct zsurface* zsurface_create(
   if (surface->registry == NULL) goto out_display;
 
   wl_registry_add_listener(surface->registry, &registry_listener, surface);
-
-  wl_list_init(&surface->view_list);
 
   return surface;
 
@@ -252,7 +265,14 @@ out:
 
 void zsurface_destroy(struct zsurface* surface)
 {
-  if (surface->toplevel) zsurface_toplevel_destroy(surface->toplevel);
+  surface->enter_toplevel = NULL;
+  surface->enter_view = NULL;
+  struct zsurface_toplevel *toplevel, *tmp;
+  wl_list_for_each_safe(toplevel, tmp, &surface->toplevel_list, link)
+  {
+    wl_list_remove(&toplevel->link);
+    zsurface_toplevel_destroy(toplevel);
+  }
   wl_display_disconnect(surface->display);  // all wayland object will be freed
   free(surface);
 }
@@ -268,30 +288,33 @@ int zsurface_check_globals(struct zsurface* surface)
   return -1;
 }
 
-struct zsurface_view* zsurface_create_toplevel_view(
+struct zsurface_toplevel* zsurface_create_toplevel_view(
     struct zsurface* surface, struct zsurface_toplevel_option option)
 {
-  if (surface->toplevel != NULL) {
-    zsurface_toplevel_destroy(surface->toplevel);
-  }
-  surface->toplevel = zsurface_toplevel_create(surface, option);
-  if (surface->toplevel == NULL) return NULL;
+  struct zsurface_toplevel* toplevel;
+  toplevel = zsurface_toplevel_create(surface, option);
+  if (toplevel == NULL) return NULL;
 
-  return surface->toplevel->view;
+  wl_list_insert(&surface->toplevel_list, &toplevel->link);
+  return toplevel;
 }
 
-void zsurface_remove_toplevel_view(struct zsurface* surface)
+void zsurface_destroy_toplevel_view(
+    struct zsurface* surface, struct zsurface_toplevel* target)
 {
-  if (surface->toplevel != NULL) {
-    zsurface_toplevel_destroy(surface->toplevel);
-    surface->toplevel = NULL;
+  struct zsurface_toplevel *toplevel, *tmp;
+  if (surface->enter_toplevel == target) {
+    surface->enter_toplevel = NULL;
+    surface->enter_view = NULL;
   }
-}
-
-struct zsurface_view* zsurface_get_toplevel_view(struct zsurface* surface)
-{
-  if (surface->toplevel) return surface->toplevel->view;
-  return NULL;
+  wl_list_for_each_safe(toplevel, tmp, &surface->toplevel_list, link)
+  {
+    if (toplevel == target) {
+      wl_list_remove(&toplevel->link);
+      zsurface_toplevel_destroy(toplevel);
+      return;
+    }
+  }
 }
 
 void zsurface_run(struct zsurface* surface)
