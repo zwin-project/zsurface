@@ -69,7 +69,19 @@ struct zsurface_toplevel* zsurface_create_toplevel_view(
 void zsurface_destroy_toplevel_view(
     struct zsurface* surface, struct zsurface_toplevel* toplevel);
 
-void zsurface_run(struct zsurface* surface);
+int zsurface_prepare_read(struct zsurface* surface);
+
+int zsurface_dispatch_pending(struct zsurface* surface);
+
+int zsurface_flush(struct zsurface* surface);
+
+void zsurface_cancel_read(struct zsurface* surface);
+
+int zsurface_read_events(struct zsurface* surface);
+
+int zsurface_get_fd(struct zsurface* surface);
+
+int zsurface_dispatch(struct zsurface* surface);
 
 /* error */
 

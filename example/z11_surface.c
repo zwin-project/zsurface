@@ -1,3 +1,5 @@
+#include <errno.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <zsurface.h>
@@ -139,6 +141,41 @@ int main()
   app_paint(app);
   zsurface_view_add_frame_callback(view, app_next_frame, app);
   zsurface_view_commit(view);
-  zsurface_run(app->surface);
-  return 0;
+
+  int ret;
+  struct pollfd pfd[1];
+  pfd[0].fd = zsurface_get_fd(app->surface);
+  pfd[0].events = POLLIN;
+
+  while (1) {
+    print_fps(2);
+    while (zsurface_prepare_read(app->surface) == -1) {
+      if (errno != EAGAIN) return EXIT_FAILURE;
+      if (zsurface_dispatch_pending(app->surface) == -1) return EXIT_FAILURE;
+    }
+
+    while (zsurface_flush(app->surface) == -1) {
+      if (errno != EAGAIN) {
+        zsurface_cancel_read(app->surface);
+        return EXIT_FAILURE;
+      }
+    }
+
+    // you can add other file descriptors to poll if needed
+    do {
+      ret = poll(pfd, 1, -1);
+    } while (ret == -1 && errno == EINTR);
+
+    if (ret == -1) {
+      zsurface_cancel_read(app->surface);
+      return EXIT_FAILURE;
+    }
+
+    if (zsurface_read_events(app->surface) == -1) return EXIT_FAILURE;
+    if (zsurface_dispatch_pending(app->surface) == -1) return EXIT_FAILURE;
+  }
+
+  // almost the same loop if polling only the zsurface display file descriptor
+  // while (zsurface_dispatch(app->surface) != -1)
+  //   ;
 }

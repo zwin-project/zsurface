@@ -317,23 +317,37 @@ void zsurface_destroy_toplevel_view(
   }
 }
 
-void zsurface_run(struct zsurface* surface)
+int zsurface_prepare_read(struct zsurface* surface)
 {
-  while (1) {
-    while (wl_display_prepare_read(surface->display) == -1) {
-      if (errno != EAGAIN) return;
-      if (wl_display_dispatch_pending(surface->display) == -1) return;
-    }
+  return wl_display_prepare_read(surface->display);
+}
 
-    while (wl_display_flush(surface->display) == -1) {
-      if (errno != EAGAIN) {
-        wl_display_cancel_read(surface->display);
-        return;
-      };
-    }
+int zsurface_dispatch_pending(struct zsurface* surface)
+{
+  return wl_display_dispatch_pending(surface->display);
+}
 
-    if (wl_display_read_events(surface->display) == -1) return;
+int zsurface_flush(struct zsurface* surface)
+{
+  return wl_display_flush(surface->display);
+}
 
-    if (wl_display_dispatch_pending(surface->display) == -1) return;
-  }
+void zsurface_cancel_read(struct zsurface* surface)
+{
+  wl_display_cancel_read(surface->display);
+}
+
+int zsurface_read_events(struct zsurface* surface)
+{
+  return wl_display_read_events(surface->display);
+}
+
+int zsurface_get_fd(struct zsurface* surface)
+{
+  return wl_display_get_fd(surface->display);
+}
+
+int zsurface_dispatch(struct zsurface* surface)
+{
+  return wl_display_dispatch(surface->display);
 }
