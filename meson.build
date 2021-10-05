@@ -12,6 +12,7 @@ public_inc = include_directories('include')
 wayland_client_dep = dependency('wayland-client')
 cglm_dep = dependency('cglm', fallback : ['cglm', 'cglm_dep'])
 
+subdir('include')
 subdir('protocol')
 subdir('zsurface')
 subdir('example')

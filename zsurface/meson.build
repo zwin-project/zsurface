@@ -18,16 +18,27 @@ srcs_zsurface = files([
   z11_input_client_protocol_h,
 ]
 
-lib_zsurface = static_library(
+lib_zsurface = library(
   'zsurface',
   srcs_zsurface,
+  install : true,
   include_directories : public_inc,
   dependencies : deps_zsurface,
+  version : meson.project_version(),
+)
+
+pkg = import('pkgconfig')
+pkg.generate(
+  name : 'zsurface',
+  libraries : lib_zsurface,
+  version : meson.project_version(),
+  url : 'https://github.com/gray-armor/zsurface',
+  description : 'Surface like z11 client library',
 )
 
 deps_zsurface_for_users = []
 
-zsurface_public_dep = declare_dependency(
+zsurface_dep = declare_dependency(
   link_with : lib_zsurface,
   include_directories : public_inc,
   dependencies : deps_zsurface_for_users,

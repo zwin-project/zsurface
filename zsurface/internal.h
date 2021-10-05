@@ -4,10 +4,11 @@
 #include <cglm/cglm.h>
 #include <stdlib.h>
 #include <wayland-client.h>
-#include <wl_zext_client.h>
 #include <z11-client-protocol.h>
 #include <z11-opengl-client-protocol.h>
 #include <zsurface.h>
+
+#include "wl_zext_client.h"
 
 /* util */
 
