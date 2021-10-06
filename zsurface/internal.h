@@ -91,7 +91,7 @@ struct zsurface_toplevel {
 };
 
 struct zsurface_toplevel* zsurface_toplevel_create(
-    struct zsurface* surface, struct zsurface_toplevel_option option);
+    struct zsurface* surface, float width, float height);
 
 void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel);
 

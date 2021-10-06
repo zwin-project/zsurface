@@ -57,7 +57,6 @@ static struct zsurface_interface interface = {
 static App* app_create(uint32_t width, uint32_t height)
 {
   App* app;
-  struct zsurface_toplevel_option option;
 
   app = calloc(1, sizeof *app);
   if (app == NULL) goto out;
@@ -67,14 +66,13 @@ static App* app_create(uint32_t width, uint32_t height)
   app->view_height = (float)height / 10.0;
   app->has_pointer = 0;
 
-  option.width = app->view_width;
-  option.height = app->view_height;
   app->surface = zsurface_create("z11-0", app, &interface);
   if (app->surface == NULL) goto out_app;
 
   if (zsurface_check_globals(app->surface) != 0) goto out_surface;
 
-  app->toplevel = zsurface_create_toplevel_view(app->surface, option);
+  app->toplevel = zsurface_create_toplevel_view(
+      app->surface, app->view_width, app->view_height);
   if (app->toplevel == NULL) goto out_surface;
 
   zsurface_view_resize_texture(zsurface_toplevel_get_view(app->toplevel),

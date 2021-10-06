@@ -58,13 +58,8 @@ void zsurface_destroy(struct zsurface* surface);
 // return 0 if ok
 int zsurface_check_globals(struct zsurface* surface);
 
-struct zsurface_toplevel_option {
-  float width;
-  float height;
-};
-
 struct zsurface_toplevel* zsurface_create_toplevel_view(
-    struct zsurface* surface, struct zsurface_toplevel_option option);
+    struct zsurface* surface, float width, float height);
 
 void zsurface_destroy_toplevel_view(
     struct zsurface* surface, struct zsurface_toplevel* toplevel);

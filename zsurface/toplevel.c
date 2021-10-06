@@ -21,7 +21,7 @@ static const struct z11_cuboid_window_listener cuboid_window_listener = {
 };
 
 struct zsurface_toplevel* zsurface_toplevel_create(
-    struct zsurface* surface, struct zsurface_toplevel_option option)
+    struct zsurface* surface, float width, float height)
 {
   struct zsurface_toplevel* toplevel;
 
@@ -39,9 +39,8 @@ struct zsurface_toplevel* zsurface_toplevel_create(
       toplevel->cuboid_window, &cuboid_window_listener, toplevel);
 
   z11_cuboid_window_request_window_size(toplevel->cuboid_window,
-      wl_fixed_from_double(option.width + padding),
-      wl_fixed_from_double(option.height + padding),
-      wl_fixed_from_double(padding));
+      wl_fixed_from_double(width + padding),
+      wl_fixed_from_double(height + padding), wl_fixed_from_double(padding));
 
   toplevel->view = zsurface_view_create(toplevel, 0, 0);
   if (toplevel->view == NULL) goto out_toplevel;
