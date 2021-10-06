@@ -51,7 +51,7 @@ struct zsurface_interface {
 };
 
 struct zsurface* zsurface_create(
-    const char* socket, void* data, struct zsurface_interface* interface);
+    const char* socket, void* data, const struct zsurface_interface* interface);
 
 void zsurface_destroy(struct zsurface* surface);
 

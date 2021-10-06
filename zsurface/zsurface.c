@@ -232,7 +232,7 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 struct zsurface* zsurface_create(
-    const char* socket, void* data, struct zsurface_interface* interface)
+    const char* socket, void* data, const struct zsurface_interface* interface)
 {
   struct zsurface* surface;
 

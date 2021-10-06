@@ -98,7 +98,7 @@ void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel);
 /* zsurface */
 
 struct zsurface {
-  struct zsurface_interface* interface;
+  const struct zsurface_interface* interface;
   void* data;
   struct wl_list toplevel_list;
   struct zsurface_view* enter_view;          // nullable

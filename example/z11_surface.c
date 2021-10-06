@@ -148,7 +148,6 @@ int main()
   pfd[0].events = POLLIN;
 
   while (1) {
-    print_fps(2);
     while (zsurface_prepare_read(app->surface) == -1) {
       if (errno != EAGAIN) return EXIT_FAILURE;
       if (zsurface_dispatch_pending(app->surface) == -1) return EXIT_FAILURE;
