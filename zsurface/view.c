@@ -47,17 +47,7 @@ struct zsurface_color_bgra *zsurface_view_get_texture_data(
   return view->texture_data;
 }
 
-uint32_t zsurface_view_get_texture_width(struct zsurface_view *view)
-{
-  return view->texture_width;
-}
-
-uint32_t zsurface_view_get_texture_height(struct zsurface_view *view)
-{
-  return view->texture_height;
-}
-
-int zsurface_view_resize_texture(
+static int zsurface_view_resize_texture(
     struct zsurface_view *view, uint32_t width, uint32_t height)
 {
   if (width * height <= view->texture_width * view->texture_height) {
@@ -89,6 +79,27 @@ int zsurface_view_resize_texture(
   view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
       view->pool, sizeof(struct view_rect), texture_size);
   return 0;
+}
+
+int zsurface_view_set_texture(struct zsurface_view *view,
+    struct zsurface_color_bgra *data, uint32_t width, uint32_t height)
+{
+  if (view->texture_width != width || view->texture_height != height)
+    if (zsurface_view_resize_texture(view, width, height) == -1) return -1;
+
+  memcpy(view->texture_data, data,
+      sizeof(struct zsurface_color_bgra) * width * height);
+
+  return 0;
+}
+
+struct zsurface_color_bgra *zsurface_view_get_texture_buffer(
+    struct zsurface_view *view, uint32_t width, uint32_t height)
+{
+  if (view->texture_width != width || view->texture_height != height)
+    if (zsurface_view_resize_texture(view, width, height) == -1) return NULL;
+
+  return view->texture_data;
 }
 
 void zsurface_view_commit(struct zsurface_view *view)

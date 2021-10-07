@@ -289,10 +289,10 @@ int zsurface_check_globals(struct zsurface* surface)
 }
 
 struct zsurface_toplevel* zsurface_create_toplevel_view(
-    struct zsurface* surface, float width, float height)
+    struct zsurface* surface)
 {
   struct zsurface_toplevel* toplevel;
-  toplevel = zsurface_toplevel_create(surface, width, height);
+  toplevel = zsurface_toplevel_create(surface);
   if (toplevel == NULL) return NULL;
 
   wl_list_insert(&surface->toplevel_list, &toplevel->link);

@@ -17,15 +17,12 @@ typedef void (*zsurface_view_frame_callback_func_t)(
 void zsurface_view_add_frame_callback(struct zsurface_view* view,
     zsurface_view_frame_callback_func_t done_func, void* data);
 
-struct zsurface_color_bgra* zsurface_view_get_texture_data(
-    struct zsurface_view* view);
-
-uint32_t zsurface_view_get_texture_width(struct zsurface_view* view);
-
-uint32_t zsurface_view_get_texture_height(struct zsurface_view* view);
-
 // return -1 when failed to trancate a shared memory file
-int zsurface_view_resize_texture(
+int zsurface_view_set_texture(struct zsurface_view* view,
+    struct zsurface_color_bgra* data, uint32_t width, uint32_t height);
+
+// return NULL when failed to trancate a shared memory file
+struct zsurface_color_bgra* zsurface_view_get_texture_buffer(
     struct zsurface_view* view, uint32_t width, uint32_t height);
 
 void zsurface_view_commit(struct zsurface_view* view);
@@ -36,6 +33,12 @@ struct zsurface_toplevel;
 
 struct zsurface_view* zsurface_toplevel_get_view(
     struct zsurface_toplevel* toplevel);
+
+// TODO:
+// notify that the resizing has succeeded using callback
+// (like zsurface_interface)
+void zsurface_toplevel_resize(
+    struct zsurface_toplevel* toplevel, float width, float height);
 
 /* zsurface */
 
@@ -59,7 +62,7 @@ void zsurface_destroy(struct zsurface* surface);
 int zsurface_check_globals(struct zsurface* surface);
 
 struct zsurface_toplevel* zsurface_create_toplevel_view(
-    struct zsurface* surface, float width, float height);
+    struct zsurface* surface);
 
 void zsurface_destroy_toplevel_view(
     struct zsurface* surface, struct zsurface_toplevel* toplevel);

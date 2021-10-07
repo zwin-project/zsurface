@@ -71,12 +71,10 @@ static App* app_create(uint32_t width, uint32_t height)
 
   if (zsurface_check_globals(app->surface) != 0) goto out_surface;
 
-  app->toplevel = zsurface_create_toplevel_view(
-      app->surface, app->view_width, app->view_height);
+  app->toplevel = zsurface_create_toplevel_view(app->surface);
   if (app->toplevel == NULL) goto out_surface;
 
-  zsurface_view_resize_texture(zsurface_toplevel_get_view(app->toplevel),
-      app->texture_width, app->texture_height);
+  zsurface_toplevel_resize(app->toplevel, app->view_width, app->view_height);
 
   app->enter_view = NULL;
 
@@ -96,7 +94,8 @@ void app_paint(App* app)
 {
   uint32_t cursor = 0;
   struct zsurface_view* view = zsurface_toplevel_get_view(app->toplevel);
-  struct zsurface_color_bgra* data = zsurface_view_get_texture_data(view);
+  struct zsurface_color_bgra* data = zsurface_view_get_texture_buffer(
+      view, app->texture_width, app->texture_height);
 
   for (uint32_t y = 0; y < app->texture_height; y++) {
     for (uint32_t x = 0; x < app->texture_width; x++) {

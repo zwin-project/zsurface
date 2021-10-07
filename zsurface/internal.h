@@ -87,11 +87,10 @@ struct zsurface_toplevel {
   struct wl_list link;
 
   struct z11_virtual_object* virtual_object;
-  struct z11_cuboid_window* cuboid_window;
+  struct z11_cuboid_window* cuboid_window;  // null when view size is 0
 };
 
-struct zsurface_toplevel* zsurface_toplevel_create(
-    struct zsurface* surface, float width, float height);
+struct zsurface_toplevel* zsurface_toplevel_create(struct zsurface* surface);
 
 void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel);
 
