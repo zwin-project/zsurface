@@ -7,6 +7,10 @@
 
 struct zsurface_view;
 
+void zsurface_view_set_user_data(struct zsurface_view* view, void* data);
+
+void* zsurface_view_get_user_data(struct zsurface_view* view);
+
 struct zsurface_color_bgra {
   uint8_t b, g, r, a;
 };
@@ -48,9 +52,9 @@ struct zsurface_interface {
   void (*seat_capability)(
       void* data, struct zsurface* surface, uint32_t capability);
   void (*pointer_enter)(
-      void* data, struct zsurface_view* view, float view_x, float view_y);
-  void (*pointer_motion)(void* data, float view_x, float view_y);
-  void (*pointer_leave)(void* data);
+      void* data, struct zsurface_view* view, uint32_t x, uint32_t y);
+  void (*pointer_motion)(void* data, uint32_t x, uint32_t y);
+  void (*pointer_leave)(void* data, struct zsurface_view* view);
 };
 
 struct zsurface* zsurface_create(

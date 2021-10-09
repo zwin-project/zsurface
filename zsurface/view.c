@@ -154,6 +154,16 @@ void zsurface_view_resize(struct zsurface_view *view, float width, float height)
   z11_virtual_object_commit(view->toplevel->virtual_object);
 }
 
+void zsurface_view_set_user_data(struct zsurface_view *view, void *data)
+{
+  view->user_data = data;
+}
+
+void *zsurface_view_get_user_data(struct zsurface_view *view)
+{
+  return view->user_data;
+}
+
 struct zsurface_view *zsurface_view_create(
     struct zsurface_toplevel *toplevel, float width, float height)
 {
@@ -163,6 +173,7 @@ struct zsurface_view *zsurface_view_create(
   view = zalloc(sizeof *view);
   if (view == NULL) goto out;
 
+  view->user_data = NULL;
   view->toplevel = toplevel;
   view->width = width;
   view->height = height;

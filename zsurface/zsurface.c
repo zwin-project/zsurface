@@ -46,21 +46,28 @@ static struct zsurface_toplevel* zsurface_find_toplevel_by_cuboid_window(
 static void handle_ray_intersection(
     struct zsurface* surface, struct view_ray_intersection_result result)
 {
+  uint32_t texture_x, texture_y;
+
   if (surface->enter_view && surface->enter_view != result.view) {
     if (surface->interface->pointer_leave)
-      surface->interface->pointer_leave(surface->data);
+      surface->interface->pointer_leave(surface->data, surface->enter_view);
+  }
+
+  if (result.view) {
+    texture_x = result.view_x * result.view->texture_width / result.view->width;
+    texture_y =
+        result.view_y * result.view->texture_height / result.view->height;
   }
 
   if (result.view && surface->enter_view != result.view) {
     if (surface->interface->pointer_enter)
       surface->interface->pointer_enter(
-          surface->data, result.view, result.view_x, result.view_y);
+          surface->data, result.view, texture_x, texture_y);
   }
 
   if (result.view && surface->enter_view == result.view) {
     if (surface->interface->pointer_motion)
-      surface->interface->pointer_motion(
-          surface->data, result.view_x, result.view_y);
+      surface->interface->pointer_motion(surface->data, texture_x, texture_y);
   }
 
   surface->enter_view = result.view;
@@ -183,7 +190,7 @@ static void seat_capability(
   // TODO: Handle keyboard
 
   if (surface->interface->seat_capability)
-    surface->interface->seat_capability(surface, surface->data, capabilities);
+    surface->interface->seat_capability(surface->data, surface, capabilities);
 }
 
 static const struct z11_seat_listener seat_listener = {

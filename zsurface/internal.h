@@ -47,6 +47,7 @@ struct view_rect {
 
 struct zsurface_view {
   struct zsurface_toplevel* toplevel;
+  void* user_data;  // nullable
 
   float width;
   float height;

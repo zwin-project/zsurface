@@ -23,28 +23,29 @@ static void seat_capability(
   (void)capability;
 }
 
-static void pointer_leave(void* data)
+static void pointer_leave(void* data, struct zsurface_view* view)
 {
+  (void)view;
   App* app = data;
   app->has_pointer = 0;
   app->enter_view = NULL;
 }
 
 static void pointer_enter(
-    void* data, struct zsurface_view* view, float view_x, float view_y)
+    void* data, struct zsurface_view* view, uint32_t x, uint32_t y)
 {
   App* app = data;
   app->has_pointer = 1;
-  app->pointer_x = view_x * 10;
-  app->pointer_y = view_y * 10;
+  app->pointer_x = x;
+  app->pointer_y = y;
   app->enter_view = view;
 }
 
-static void pointer_motion(void* data, float view_x, float view_y)
+static void pointer_motion(void* data, uint32_t x, uint32_t y)
 {
   App* app = data;
-  app->pointer_x = view_x * 10;
-  app->pointer_y = view_y * 10;
+  app->pointer_x = x;
+  app->pointer_y = y;
 }
 
 static struct zsurface_interface interface = {
