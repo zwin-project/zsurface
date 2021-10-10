@@ -43,8 +43,8 @@ static struct zsurface_toplevel* zsurface_find_toplevel_by_cuboid_window(
   return NULL;
 }
 
-static void handle_ray_intersection(
-    struct zsurface* surface, struct view_ray_intersection_result result)
+static void handle_ray_intersection(struct zsurface* surface,
+    struct zsurface_view_ray_intersection_result result)
 {
   uint32_t texture_x, texture_y;
 
@@ -81,7 +81,6 @@ static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
 {
   UNUSED(ray);
   UNUSED(serial);
-  UNUSED(cuboid_window);
   struct zsurface* surface = data;
   struct zsurface_toplevel* toplevel;
   toplevel = zsurface_find_toplevel_by_cuboid_window(surface, cuboid_window);
@@ -101,8 +100,8 @@ static void ray_enter(void* data, struct z11_ray* ray, uint32_t serial,
   vec3 origin = {origin_x.flt, origin_y.flt, origin_z.flt};
   vec3 direction = {direction_x.flt, direction_y.flt, direction_z.flt};
 
-  struct view_ray_intersection_result result =
-      view_ray_intersection(origin, direction, toplevel);
+  struct zsurface_view_ray_intersection_result result =
+      zsurface_view_ray_intersection(origin, direction, toplevel);
 
   handle_ray_intersection(surface, result);
 }
@@ -130,8 +129,9 @@ static void ray_motion(void* data, struct z11_ray* ray, uint32_t time,
   vec3 origin = {origin_x.flt, origin_y.flt, origin_z.flt};
   vec3 direction = {direction_x.flt, direction_y.flt, direction_z.flt};
 
-  struct view_ray_intersection_result result =
-      view_ray_intersection(origin, direction, surface->enter_toplevel);
+  struct zsurface_view_ray_intersection_result result =
+      zsurface_view_ray_intersection(
+          origin, direction, surface->enter_toplevel);
 
   handle_ray_intersection(surface, result);
 }
@@ -144,7 +144,7 @@ static void ray_leave(void* data, struct z11_ray* ray, uint32_t serial,
   UNUSED(cuboid_window);
   struct zsurface* surface = data;
   surface->enter_toplevel = NULL;
-  struct view_ray_intersection_result result = {
+  struct zsurface_view_ray_intersection_result result = {
       .view = NULL,
       .view_x = 0,
       .view_y = 0,
@@ -175,8 +175,6 @@ static const struct z11_ray_listener ray_listener = {
 static void seat_capability(
     void* data, struct z11_seat* seat, uint32_t capabilities)
 {
-  UNUSED(seat);
-  UNUSED(ray_listener);
   struct zsurface* surface = data;
 
   if (capabilities & Z11_SEAT_CAPABILITY_RAY) {

@@ -2,11 +2,11 @@
 
 #include "internal.h"
 
-struct view_ray_intersection_result view_ray_intersection(
+struct zsurface_view_ray_intersection_result zsurface_view_ray_intersection(
     vec3 origin, vec3 direction, struct zsurface_toplevel* toplevel)
 {
   // FIXME: use z index
-  struct view_ray_intersection_result result = {
+  struct zsurface_view_ray_intersection_result result = {
       .view = NULL,
       .view_x = 0,
       .view_y = 0,

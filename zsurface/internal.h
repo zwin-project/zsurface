@@ -117,12 +117,12 @@ struct zsurface {
 
 /* view - ray intersection*/
 
-struct view_ray_intersection_result {
+struct zsurface_view_ray_intersection_result {
   float view_x, view_y;        // local coord; (0, 0) == (left, top)
   struct zsurface_view* view;  // null when no intersection
 };
 
-struct view_ray_intersection_result view_ray_intersection(
+struct zsurface_view_ray_intersection_result zsurface_view_ray_intersection(
     vec3 origin, vec3 direction, struct zsurface_toplevel* toplevel);
 
 #endif  //  ZSURFACE_INTERNAL
