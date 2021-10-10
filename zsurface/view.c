@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 
+#include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -40,6 +41,108 @@ static void zsurface_view_update_vertex_buffer(struct zsurface_view *view)
   view->vertex_data->triangles[1].vetices[2] = C;
 }
 
+struct zsurface_color_bgra *zsurface_view_get_texture_data(
+    struct zsurface_view *view)
+{
+  return view->texture_data;
+}
+
+static int zsurface_view_resize_texture(
+    struct zsurface_view *view, uint32_t width, uint32_t height)
+{
+  if (width * height <= view->texture_width * view->texture_height) {
+    view->texture_width = width;
+    view->texture_height = height;
+    return 0;
+  }
+
+  size_t texture_size = sizeof(struct zsurface_color_bgra) * width * height;
+
+  if (ftruncate(view->fd, sizeof(struct view_rect) + texture_size) < 0)
+    return -1;
+
+  wl_shm_pool_resize(view->pool, sizeof(struct view_rect) + texture_size);
+
+  munmap(view->shm_data, view->shm_data_len);
+
+  view->texture_width = width;
+  view->texture_height = height;
+  view->shm_data_len = sizeof(struct view_rect) + texture_size;
+  view->shm_data = mmap(NULL, view->shm_data_len, PROT_READ | PROT_WRITE,
+      MAP_SHARED, view->fd, 0);
+  view->vertex_data = view->shm_data;
+  view->texture_data =
+      (void *)((uint8_t *)view->shm_data + sizeof(struct view_rect));
+  memset(view->texture_data, UINT8_MAX, texture_size);
+
+  wl_raw_buffer_destroy(view->texture_raw_buffer);
+  view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
+      view->pool, sizeof(struct view_rect), texture_size);
+  return 0;
+}
+
+int zsurface_view_set_texture(struct zsurface_view *view,
+    struct zsurface_color_bgra *data, uint32_t width, uint32_t height)
+{
+  if (view->texture_width != width || view->texture_height != height)
+    if (zsurface_view_resize_texture(view, width, height) == -1) return -1;
+
+  memcpy(view->texture_data, data,
+      sizeof(struct zsurface_color_bgra) * width * height);
+
+  return 0;
+}
+
+struct zsurface_color_bgra *zsurface_view_get_texture_buffer(
+    struct zsurface_view *view, uint32_t width, uint32_t height)
+{
+  if (view->texture_width != width || view->texture_height != height)
+    if (zsurface_view_resize_texture(view, width, height) == -1) return NULL;
+
+  return view->texture_data;
+}
+
+void zsurface_view_commit(struct zsurface_view *view)
+{
+  z11_opengl_texture_2d_set_image(view->texture, view->texture_raw_buffer,
+      Z11_OPENGL_TEXTURE_2D_FORMAT_ARGB8888, view->texture_width,
+      view->texture_height);
+  z11_virtual_object_commit(view->toplevel->virtual_object);
+}
+
+struct zsurface_view_callback_data {
+  zsurface_view_frame_callback_func_t func;
+  void *data;
+};
+
+static void zsurface_view_callback_done(
+    void *data, struct wl_callback *callback, uint32_t callback_time)
+{
+  struct zsurface_view_callback_data *callback_data = data;
+  callback_data->func(callback_data->data, callback_time);
+
+  wl_callback_destroy(callback);
+  free(callback_data);
+}
+
+static const struct wl_callback_listener zsurface_view_callback_listener = {
+    .done = zsurface_view_callback_done,
+};
+
+void zsurface_view_add_frame_callback(struct zsurface_view *view,
+    zsurface_view_frame_callback_func_t done_func, void *data)
+{
+  struct wl_callback *cb;
+  struct zsurface_view_callback_data *callback_data;
+  cb = z11_virtual_object_frame(view->toplevel->virtual_object);
+
+  callback_data = zalloc(sizeof *callback_data);
+  callback_data->data = data;
+  callback_data->func = done_func;
+
+  wl_callback_add_listener(cb, &zsurface_view_callback_listener, callback_data);
+}
+
 void zsurface_view_resize(struct zsurface_view *view, float width, float height)
 {
   view->width = width;
@@ -51,6 +154,16 @@ void zsurface_view_resize(struct zsurface_view *view, float width, float height)
   z11_virtual_object_commit(view->toplevel->virtual_object);
 }
 
+void zsurface_view_set_user_data(struct zsurface_view *view, void *data)
+{
+  view->user_data = data;
+}
+
+void *zsurface_view_get_user_data(struct zsurface_view *view)
+{
+  return view->user_data;
+}
+
 struct zsurface_view *zsurface_view_create(
     struct zsurface_toplevel *toplevel, float width, float height)
 {
@@ -60,33 +173,34 @@ struct zsurface_view *zsurface_view_create(
   view = zalloc(sizeof *view);
   if (view == NULL) goto out;
 
+  view->user_data = NULL;
   view->toplevel = toplevel;
   view->width = width;
   view->height = height;
   view->texture_width = 100;
   view->texture_height = 100;
-  texture_size =
-      sizeof(struct color_bgra) * view->texture_width * view->texture_height;
+  texture_size = sizeof(struct zsurface_color_bgra) * view->texture_width *
+                 view->texture_height;
 
   view->fd = create_shared_fd(sizeof(struct view_rect) + texture_size);
+  if (view->fd < 0) goto out_view;
 
   view->shm_data_len = sizeof(struct view_rect) + texture_size;
   view->shm_data = mmap(NULL, view->shm_data_len, PROT_READ | PROT_WRITE,
       MAP_SHARED, view->fd, 0);
+  if (view->shm_data == MAP_FAILED) goto out_fd;
+
   view->vertex_data = view->shm_data;
   view->texture_data =
       (void *)((uint8_t *)view->shm_data + sizeof(struct view_rect));
   memset(view->texture_data, UINT8_MAX, texture_size);
 
-  {
-    struct wl_shm_pool *pool = wl_shm_create_pool(
-        toplevel->surface->shm, view->fd, view->shm_data_len);
-    view->vertex_raw_buffer =
-        wl_zext_shm_pool_create_raw_buffer(pool, 0, sizeof(struct view_rect));
-    view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
-        pool, sizeof(struct view_rect), texture_size);
-    wl_shm_pool_destroy(pool);
-  }
+  view->pool =
+      wl_shm_create_pool(toplevel->surface->shm, view->fd, view->shm_data_len);
+  view->vertex_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
+      view->pool, 0, sizeof(struct view_rect));
+  view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
+      view->pool, sizeof(struct view_rect), texture_size);
 
   view->render_component =
       z11_opengl_render_component_manager_create_opengl_render_component(
@@ -125,6 +239,12 @@ struct zsurface_view *zsurface_view_create(
   z11_virtual_object_commit(toplevel->virtual_object);
 
   return view;
+
+out_fd:
+  close(view->fd);
+
+out_view:
+  free(view);
 
 out:
   return NULL;

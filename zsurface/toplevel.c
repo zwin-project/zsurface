@@ -20,8 +20,7 @@ static const struct z11_cuboid_window_listener cuboid_window_listener = {
     .configure = zsurface_toplevel_protocol_configure,
 };
 
-struct zsurface_toplevel* zsurface_toplevel_create(
-    struct zsurface* surface, struct zsurface_toplevel_option option)
+struct zsurface_toplevel* zsurface_toplevel_create(struct zsurface* surface)
 {
   struct zsurface_toplevel* toplevel;
 
@@ -33,15 +32,7 @@ struct zsurface_toplevel* zsurface_toplevel_create(
   toplevel->virtual_object =
       z11_compositor_create_virtual_object(surface->compositor);
 
-  toplevel->cuboid_window =
-      z11_shell_get_cuboid_window(surface->shell, toplevel->virtual_object);
-  z11_cuboid_window_add_listener(
-      toplevel->cuboid_window, &cuboid_window_listener, toplevel);
-
-  z11_cuboid_window_request_window_size(toplevel->cuboid_window,
-      wl_fixed_from_double(option.width + padding),
-      wl_fixed_from_double(option.height + padding),
-      wl_fixed_from_double(padding));
+  toplevel->cuboid_window = NULL;
 
   toplevel->view = zsurface_view_create(toplevel, 0, 0);
   if (toplevel->view == NULL) goto out_toplevel;
@@ -60,7 +51,35 @@ out:
 void zsurface_toplevel_destroy(struct zsurface_toplevel* toplevel)
 {
   zsurface_view_destroy(toplevel->view);
-  z11_cuboid_window_destroy(toplevel->cuboid_window);
+  if (toplevel->cuboid_window)
+    z11_cuboid_window_destroy(toplevel->cuboid_window);
   z11_virtual_object_destroy(toplevel->virtual_object);
   free(toplevel);
+}
+
+struct zsurface_view* zsurface_toplevel_get_view(
+    struct zsurface_toplevel* toplevel)
+{
+  return toplevel->view;
+}
+
+void zsurface_toplevel_resize(
+    struct zsurface_toplevel* toplevel, float width, float height)
+{
+  if (width == 0 || height == 0) {
+    if (toplevel->cuboid_window)
+      z11_cuboid_window_destroy(toplevel->cuboid_window);
+    return;
+  }
+
+  if (toplevel->cuboid_window == NULL) {
+    toplevel->cuboid_window = z11_shell_get_cuboid_window(
+        toplevel->surface->shell, toplevel->virtual_object);
+    z11_cuboid_window_add_listener(
+        toplevel->cuboid_window, &cuboid_window_listener, toplevel);
+  }
+
+  z11_cuboid_window_request_window_size(toplevel->cuboid_window,
+      wl_fixed_from_double(width + padding),
+      wl_fixed_from_double(height + padding), wl_fixed_from_double(padding));
 }
