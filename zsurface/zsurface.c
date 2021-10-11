@@ -156,13 +156,11 @@ static void ray_leave(void* data, struct z11_ray* ray, uint32_t serial,
 static void ray_button(void* data, struct z11_ray* ray, uint32_t serial,
     uint32_t time, uint32_t button, uint32_t state)
 {
-  struct zsurface* surface = data;
-  UNUSED(surface);
   UNUSED(ray);
   UNUSED(serial);
   UNUSED(time);
-  UNUSED(button);
-  UNUSED(state);
+  struct zsurface* surface = data;
+  surface->interface->pointer_button(surface->data, button, state);
 }
 
 static const struct z11_ray_listener ray_listener = {
