@@ -48,11 +48,19 @@ static void pointer_motion(void* data, uint32_t x, uint32_t y)
   app->pointer_y = y;
 }
 
+static void pointer_button(void* data, uint32_t button, uint32_t state)
+{
+  (void)data;
+  (void)button;
+  (void)state;
+}
+
 static struct zsurface_interface interface = {
     .seat_capability = seat_capability,
     .pointer_leave = pointer_leave,
     .pointer_enter = pointer_enter,
     .pointer_motion = pointer_motion,
+    .pointer_button = pointer_button,
 };
 
 static App* app_create(uint32_t width, uint32_t height)
