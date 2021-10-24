@@ -55,6 +55,7 @@ struct zsurface_interface {
       void* data, struct zsurface_view* view, uint32_t x, uint32_t y);
   void (*pointer_motion)(void* data, uint32_t x, uint32_t y);
   void (*pointer_leave)(void* data, struct zsurface_view* view);
+  void (*pointer_button)(void* data, uint32_t button, uint32_t state);
 };
 
 struct zsurface* zsurface_create(
