@@ -4,7 +4,6 @@
 #include <string.h>
 #include <wayland-client.h>
 #include <z11-client-protocol.h>
-#include <z11-input-client-protocol.h>
 #include <z11-opengl-client-protocol.h>
 #include <zsurface.h>
 
