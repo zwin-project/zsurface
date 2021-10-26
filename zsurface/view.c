@@ -9,6 +9,7 @@
 
 static const char *vertex_shader;
 static const char *fragment_shader;
+static const char *cursor_fragment_shader;
 
 static int create_shared_fd(off_t size)
 {
@@ -58,26 +59,32 @@ static int zsurface_view_resize_texture(
 
   size_t texture_size = sizeof(struct zsurface_color_bgra) * width * height;
 
-  if (ftruncate(view->fd, sizeof(struct view_rect) + texture_size) < 0)
+  if (ftruncate(view->fd, sizeof(struct view_rect) +
+                              sizeof(struct view_triangle) + texture_size) < 0)
     return -1;
 
-  wl_shm_pool_resize(view->pool, sizeof(struct view_rect) + texture_size);
+  wl_shm_pool_resize(view->pool,
+      sizeof(struct view_rect) + sizeof(struct view_triangle) + texture_size);
 
   munmap(view->shm_data, view->shm_data_len);
 
   view->texture_width = width;
   view->texture_height = height;
-  view->shm_data_len = sizeof(struct view_rect) + texture_size;
+  view->shm_data_len =
+      sizeof(struct view_rect) + sizeof(struct view_triangle) + texture_size;
   view->shm_data = mmap(NULL, view->shm_data_len, PROT_READ | PROT_WRITE,
       MAP_SHARED, view->fd, 0);
   view->vertex_data = view->shm_data;
-  view->texture_data =
+  view->cursor_vertex_data =
       (void *)((uint8_t *)view->shm_data + sizeof(struct view_rect));
+  view->texture_data =
+      (void *)((uint8_t *)view->shm_data + sizeof(struct view_rect) +
+               sizeof(struct view_triangle));
   memset(view->texture_data, UINT8_MAX, texture_size);
 
   wl_raw_buffer_destroy(view->texture_raw_buffer);
-  view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
-      view->pool, sizeof(struct view_rect), texture_size);
+  view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(view->pool,
+      sizeof(struct view_rect) + sizeof(struct view_triangle), texture_size);
   return 0;
 }
 
@@ -164,6 +171,70 @@ void *zsurface_view_get_user_data(struct zsurface_view *view)
   return view->user_data;
 }
 
+static void zsurface_view_update_cursor_vertex(
+    struct zsurface_view *view, float view_x, float view_y)
+{
+  view->cursor_vertex_data->vetices[0].point.x = view_x - view->width / 2;
+  view->cursor_vertex_data->vetices[0].point.y = view->height / 2 - view_y;
+  view->cursor_vertex_data->vetices[0].point.z = -1;
+  view->cursor_vertex_data->vetices[1].point.x = view_x - view->width / 2;
+  view->cursor_vertex_data->vetices[1].point.y = view->height / 2 - view_y - 4;
+  view->cursor_vertex_data->vetices[1].point.z = -1;
+  view->cursor_vertex_data->vetices[2].point.x = view_x - view->width / 2 + 2;
+  view->cursor_vertex_data->vetices[2].point.y = view->height / 2 - view_y - 3;
+  view->cursor_vertex_data->vetices[2].point.z = -1;
+  z11_opengl_vertex_buffer_attach(view->cursor_vertex_buffer,
+      view->cursor_vertex_raw_buffer, sizeof(struct vertex));
+}
+
+void zsurface_view_show_cursor(
+    struct zsurface_view *view, float view_x, float view_y)
+{
+  if (view->cursor_render_component) {
+    z11_opengl_render_component_destroy(view->cursor_render_component);
+    view->cursor_render_component = NULL;
+  }
+
+  view->cursor_render_component =
+      z11_opengl_render_component_manager_create_opengl_render_component(
+          view->toplevel->surface->render_component_manager,
+          view->toplevel->virtual_object);
+
+  z11_opengl_render_component_attach_shader_program(
+      view->cursor_render_component, view->cursor_shader);
+
+  z11_opengl_render_component_set_topology(
+      view->cursor_render_component, Z11_OPENGL_TOPOLOGY_TRIANGLES);
+
+  z11_opengl_render_component_append_vertex_input_attribute(
+      view->cursor_render_component, 0,
+      Z11_OPENGL_VERTEX_INPUT_ATTRIBUTE_FORMAT_FLOAT_VECTOR3,
+      offsetof(struct vertex, point));
+
+  zsurface_view_update_cursor_vertex(view, view_x, view_y);
+
+  z11_opengl_render_component_attach_vertex_buffer(
+      view->cursor_render_component, view->cursor_vertex_buffer);
+
+  z11_virtual_object_commit(view->toplevel->virtual_object);
+}
+
+void zsurface_view_move_cursor(
+    struct zsurface_view *view, float view_x, float view_y)
+{
+  zsurface_view_update_cursor_vertex(view, view_x, view_y);
+  z11_virtual_object_commit(view->toplevel->virtual_object);
+}
+
+void zsurface_view_hide_cursor(struct zsurface_view *view)
+{
+  if (view->cursor_render_component) {
+    z11_opengl_render_component_destroy(view->cursor_render_component);
+    view->cursor_render_component = NULL;
+  }
+  z11_virtual_object_commit(view->toplevel->virtual_object);
+}
+
 struct zsurface_view *zsurface_view_create(
     struct zsurface_toplevel *toplevel, float width, float height)
 {
@@ -182,25 +253,32 @@ struct zsurface_view *zsurface_view_create(
   texture_size = sizeof(struct zsurface_color_bgra) * view->texture_width *
                  view->texture_height;
 
-  view->fd = create_shared_fd(sizeof(struct view_rect) + texture_size);
+  view->fd = create_shared_fd(
+      sizeof(struct view_rect) + sizeof(struct view_triangle) + texture_size);
   if (view->fd < 0) goto out_view;
 
-  view->shm_data_len = sizeof(struct view_rect) + texture_size;
+  view->shm_data_len =
+      sizeof(struct view_rect) + sizeof(struct view_triangle) + texture_size;
   view->shm_data = mmap(NULL, view->shm_data_len, PROT_READ | PROT_WRITE,
       MAP_SHARED, view->fd, 0);
   if (view->shm_data == MAP_FAILED) goto out_fd;
 
   view->vertex_data = view->shm_data;
-  view->texture_data =
+  view->cursor_vertex_data =
       (void *)((uint8_t *)view->shm_data + sizeof(struct view_rect));
+  view->texture_data =
+      (void *)((uint8_t *)view->shm_data + sizeof(struct view_rect) +
+               sizeof(struct view_triangle));
   memset(view->texture_data, UINT8_MAX, texture_size);
 
   view->pool =
       wl_shm_create_pool(toplevel->surface->shm, view->fd, view->shm_data_len);
   view->vertex_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
       view->pool, 0, sizeof(struct view_rect));
-  view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
+  view->cursor_vertex_raw_buffer = wl_zext_shm_pool_create_raw_buffer(
       view->pool, sizeof(struct view_rect), texture_size);
+  view->texture_raw_buffer = wl_zext_shm_pool_create_raw_buffer(view->pool,
+      sizeof(struct view_rect) + sizeof(struct view_triangle), texture_size);
 
   view->render_component =
       z11_opengl_render_component_manager_create_opengl_render_component(
@@ -236,6 +314,11 @@ struct zsurface_view *zsurface_view_create(
   z11_opengl_vertex_buffer_attach(
       view->vertex_buffer, view->vertex_raw_buffer, sizeof(struct vertex));
 
+  view->cursor_vertex_buffer =
+      z11_opengl_create_vertex_buffer(toplevel->surface->gl);
+  view->cursor_shader = z11_opengl_create_shader_program(
+      toplevel->surface->gl, vertex_shader, cursor_fragment_shader);
+
   z11_virtual_object_commit(toplevel->virtual_object);
 
   return view;
@@ -252,6 +335,11 @@ out:
 
 void zsurface_view_destroy(struct zsurface_view *view)
 {
+  z11_opengl_shader_program_destroy(view->cursor_shader);
+  wl_raw_buffer_destroy(view->cursor_vertex_raw_buffer);
+  z11_opengl_vertex_buffer_destroy(view->cursor_vertex_buffer);
+  if (view->cursor_render_component)
+    z11_opengl_render_component_destroy(view->cursor_render_component);
   wl_raw_buffer_destroy(view->texture_raw_buffer);
   z11_opengl_texture_2d_destroy(view->texture);
   z11_opengl_shader_program_destroy(view->shader);
@@ -284,4 +372,13 @@ static const char *fragment_shader =
     "void main()\n"
     "{\n"
     "  outputColor = texture(userTexture, v2UVcoords);\n"
+    "}\n";
+
+static const char *cursor_fragment_shader =
+    "#version 410 core\n"
+    "in vec2 v2UVcoords;\n"
+    "out vec4 outputColor;\n"
+    "void main()\n"
+    "{\n"
+    "  outputColor = vec4(1.0, 0.0, 0.0, 1.0);\n"
     "}\n";

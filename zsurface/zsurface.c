@@ -48,8 +48,10 @@ static void handle_ray_intersection(struct zsurface* surface,
   uint32_t texture_x, texture_y;
 
   if (surface->enter_view && surface->enter_view != result.view) {
-    if (surface->interface->pointer_leave)
+    if (surface->interface->pointer_leave) {
+      zsurface_view_hide_cursor(surface->enter_view);
       surface->interface->pointer_leave(surface->data, surface->enter_view);
+    }
   }
 
   if (result.view) {
@@ -59,14 +61,18 @@ static void handle_ray_intersection(struct zsurface* surface,
   }
 
   if (result.view && surface->enter_view != result.view) {
-    if (surface->interface->pointer_enter)
+    if (surface->interface->pointer_enter) {
+      zsurface_view_show_cursor(result.view, result.view_x, result.view_y);
       surface->interface->pointer_enter(
           surface->data, result.view, texture_x, texture_y);
+    }
   }
 
   if (result.view && surface->enter_view == result.view) {
-    if (surface->interface->pointer_motion)
+    if (surface->interface->pointer_motion) {
+      zsurface_view_move_cursor(result.view, result.view_x, result.view_y);
       surface->interface->pointer_motion(surface->data, texture_x, texture_y);
+    }
   }
 
   surface->enter_view = result.view;

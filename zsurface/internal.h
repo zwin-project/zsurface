@@ -70,10 +70,25 @@ struct zsurface_view {
   struct zsurface_color_bgra* texture_data;
   uint32_t texture_width;
   uint32_t texture_height;
+
+  struct z11_opengl_render_component* cursor_render_component;
+
+  struct z11_opengl_vertex_buffer* cursor_vertex_buffer;
+  struct wl_zext_raw_buffer* cursor_vertex_raw_buffer;
+  struct view_triangle* cursor_vertex_data;
+  struct z11_opengl_shader_program* cursor_shader;
 };
 
 void zsurface_view_resize(
     struct zsurface_view* view, float width, float height);
+
+void zsurface_view_show_cursor(
+    struct zsurface_view* view, float view_x, float view_y);
+
+void zsurface_view_move_cursor(
+    struct zsurface_view* view, float view_x, float view_y);
+
+void zsurface_view_hide_cursor(struct zsurface_view* view);
 
 struct zsurface_view* zsurface_view_create(
     struct zsurface_toplevel* toplevel, float width, float height);
