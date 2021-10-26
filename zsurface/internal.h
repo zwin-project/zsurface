@@ -112,7 +112,8 @@ struct zsurface {
   struct z11_opengl_render_component_manager* render_component_manager;
   struct z11_shell* shell;
   struct z11_seat* seat;
-  struct z11_ray* ray;  // nullable
+  struct z11_ray* ray;            // nullable
+  struct z11_keyboard* keyboard;  // nullable
 };
 
 /* view - ray intersection*/
