@@ -1,5 +1,5 @@
-z11_surface_source_files = [
-  'z11_surface.c'
+z11_whiteboard_source_files = [
+  'z11_whiteboard.c'
 ]
 
 zsurface_example_dependencies = [
@@ -7,8 +7,8 @@ zsurface_example_dependencies = [
 ]
 
 executable(
-  'z11-surface',
-  z11_surface_source_files,
+  'z11-whiteboard',
+  z11_whiteboard_source_files,
   install : false,
   dependencies : zsurface_example_dependencies,
   include_directories : public_inc,
