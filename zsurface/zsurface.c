@@ -159,6 +159,7 @@ static void ray_button(void* data, struct z11_ray* ray, uint32_t serial,
   UNUSED(serial);
   UNUSED(time);
   struct zsurface* surface = data;
+
   surface->interface->pointer_button(surface->data, button, state);
 }
 
@@ -167,6 +168,78 @@ static const struct z11_ray_listener ray_listener = {
     .motion = ray_motion,
     .leave = ray_leave,
     .button = ray_button,
+};
+
+static void keyboard_keymap(void* data, struct z11_keyboard* keyboard,
+    uint32_t format, int fd, uint32_t size)
+{
+  UNUSED(keyboard);
+  struct zsurface* surface = data;
+
+  // TODO: Handle the case wayland keymap format enum and z11 keymap format enum
+  // are not same.
+
+  surface->interface->keyboard_keymap(surface->data, format, fd, size);
+}
+
+static void keyboard_enter(void* data, struct z11_keyboard* keyboard,
+    uint32_t serial, struct z11_cuboid_window* cuboid_window,
+    struct wl_array* keys)
+{
+  UNUSED(keyboard);
+  UNUSED(serial);
+  struct zsurface* surface = data;
+  struct zsurface_toplevel* toplevel;
+  toplevel = zsurface_find_toplevel_by_cuboid_window(surface, cuboid_window);
+  if (toplevel == NULL) return;
+
+  uint32_t key_count = keys->size / (sizeof(uint32_t));
+  uint32_t key_array[key_count];
+
+  memcpy(key_array, keys->data, keys->size);
+
+  surface->interface->keyboard_enter(
+      surface->data, toplevel->view, key_array, key_count);
+}
+
+static void keyboard_leave(void* data, struct z11_keyboard* keyboard,
+    uint32_t serial, struct z11_cuboid_window* cuboid_window)
+{
+  UNUSED(keyboard);
+  UNUSED(serial);
+  struct zsurface* surface = data;
+  struct zsurface_toplevel* toplevel;
+  toplevel = zsurface_find_toplevel_by_cuboid_window(surface, cuboid_window);
+  if (toplevel == NULL) return;
+
+  surface->interface->keyboard_leave(surface->data, toplevel->view);
+}
+
+static void keyboard_key(void* data, struct z11_keyboard* keyboard,
+    uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
+{
+  UNUSED(keyboard);
+  UNUSED(serial);
+  UNUSED(time);
+  struct zsurface* surface = data;
+
+  surface->interface->keyboard_key(surface->data, key, state);
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+static void keyboard_modifiers(void* data, struct z11_keyboard* keyboard,
+    uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched,
+    uint32_t mods_locked, uint32_t group)
+{}
+#pragma GCC diagnostic pop
+
+static const struct z11_keyboard_listener keyboard_listener = {
+    .keymap = keyboard_keymap,
+    .enter = keyboard_enter,
+    .leave = keyboard_leave,
+    .key = keyboard_key,
+    .modifiers = keyboard_modifiers,
 };
 
 static void seat_capability(
@@ -182,7 +255,13 @@ static void seat_capability(
     surface->ray = NULL;
   }
 
-  // TODO: Handle keyboard
+  if (capabilities & Z11_SEAT_CAPABILITY_KEYBOARD) {
+    surface->keyboard = z11_seat_get_keyboard(seat);
+    z11_keyboard_add_listener(surface->keyboard, &keyboard_listener, surface);
+  } else {
+    if (surface->keyboard) z11_keyboard_destroy(surface->keyboard);
+    surface->keyboard = NULL;
+  }
 
   if (surface->interface->seat_capability)
     surface->interface->seat_capability(surface->data, surface, capabilities);

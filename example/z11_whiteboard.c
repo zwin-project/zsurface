@@ -14,18 +14,14 @@ typedef struct {
   int has_pointer;
 } App;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 static void seat_capability(
     void* data, struct zsurface* surface, uint32_t capability)
-{
-  App* app = data;
-  (void)app;
-  (void)surface;
-  (void)capability;
-}
+{}
 
 static void pointer_leave(void* data, struct zsurface_view* view)
 {
-  (void)view;
   App* app = data;
   app->has_pointer = 0;
   app->enter_view = NULL;
@@ -48,19 +44,32 @@ static void pointer_motion(void* data, uint32_t x, uint32_t y)
   app->pointer_y = y;
 }
 
-static void pointer_button(void* data, uint32_t button, uint32_t state)
-{
-  (void)data;
-  (void)button;
-  (void)state;
-}
+static void pointer_button(void* data, uint32_t button, uint32_t state) {}
+
+static void keyboard_keymap(void* data, uint32_t format, int fd, uint32_t size)
+{}
+
+static void keyboard_enter(
+    void* data, struct zsurface_view* view, uint32_t* keys, uint32_t key_count)
+{}
+
+static void keyboard_leave(void* data, struct zsurface_view* view) {}
+
+static void keyboard_key(void* data, uint32_t key, uint32_t state) {}
+#pragma GCC diagnostic pop
 
 static struct zsurface_interface interface = {
     .seat_capability = seat_capability,
+
     .pointer_leave = pointer_leave,
     .pointer_enter = pointer_enter,
     .pointer_motion = pointer_motion,
     .pointer_button = pointer_button,
+
+    .keyboard_keymap = keyboard_keymap,
+    .keyboard_enter = keyboard_enter,
+    .keyboard_leave = keyboard_leave,
+    .keyboard_key = keyboard_key,
 };
 
 static App* app_create(uint32_t width, uint32_t height)

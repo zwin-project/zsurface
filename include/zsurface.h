@@ -51,11 +51,18 @@ struct zsurface;
 struct zsurface_interface {
   void (*seat_capability)(
       void* data, struct zsurface* surface, uint32_t capability);
+
   void (*pointer_enter)(
       void* data, struct zsurface_view* view, uint32_t x, uint32_t y);
   void (*pointer_motion)(void* data, uint32_t x, uint32_t y);
   void (*pointer_leave)(void* data, struct zsurface_view* view);
   void (*pointer_button)(void* data, uint32_t button, uint32_t state);
+
+  void (*keyboard_keymap)(void* data, uint32_t format, int fd, uint32_t size);
+  void (*keyboard_enter)(void* data, struct zsurface_view* view, uint32_t* keys,
+      uint32_t key_count);
+  void (*keyboard_leave)(void* data, struct zsurface_view* view);
+  void (*keyboard_key)(void* data, uint32_t key, uint32_t state);
 };
 
 struct zsurface* zsurface_create(
