@@ -199,7 +199,13 @@ static void keyboard_enter(void* data, struct z11_keyboard* keyboard,
   toplevel = zsurface_find_toplevel_by_cuboid_window(surface, cuboid_window);
   if (toplevel == NULL) return;
 
-  surface->interface->keyboard_enter(surface->data, toplevel->view, keys);
+  uint32_t key_count = keys->size / (sizeof(uint32_t));
+  uint32_t key_array[key_count];
+
+  memcpy(key_array, keys->data, keys->size);
+
+  surface->interface->keyboard_enter(
+      surface->data, toplevel->view, key_array, key_count);
 }
 
 static void keyboard_leave(void* data, struct z11_keyboard* keyboard,

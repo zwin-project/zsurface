@@ -2,7 +2,6 @@
 #define ZSURFACE_H
 
 #include <stdint.h>
-#include <wayland-util.h>
 
 /* view */
 
@@ -60,8 +59,8 @@ struct zsurface_interface {
   void (*pointer_button)(void* data, uint32_t button, uint32_t state);
 
   void (*keyboard_keymap)(void* data, uint32_t format, int fd, uint32_t size);
-  void (*keyboard_enter)(
-      void* data, struct zsurface_view* view, struct wl_array* keys);
+  void (*keyboard_enter)(void* data, struct zsurface_view* view, uint32_t* keys,
+      uint32_t key_count);
   void (*keyboard_leave)(void* data, struct zsurface_view* view);
   void (*keyboard_key)(void* data, uint32_t key, uint32_t state);
 };

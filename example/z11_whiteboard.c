@@ -50,7 +50,7 @@ static void keyboard_keymap(void* data, uint32_t format, int fd, uint32_t size)
 {}
 
 static void keyboard_enter(
-    void* data, struct zsurface_view* view, struct wl_array* keys)
+    void* data, struct zsurface_view* view, uint32_t* keys, uint32_t key_count)
 {}
 
 static void keyboard_leave(void* data, struct zsurface_view* view) {}
