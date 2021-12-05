@@ -1,5 +1,5 @@
-z11_whiteboard_source_files = [
-  'z11_whiteboard.c'
+zigen_whiteboard_source_files = [
+  'zigen-whiteboard.c'
 ]
 
 zsurface_example_dependencies = [
@@ -7,8 +7,8 @@ zsurface_example_dependencies = [
 ]
 
 executable(
-  'z11-whiteboard',
-  z11_whiteboard_source_files,
+  'zigen-whiteboard',
+  zigen_whiteboard_source_files,
   install : false,
   dependencies : zsurface_example_dependencies,
   include_directories : public_inc,
