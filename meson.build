@@ -10,7 +10,7 @@ project(
 public_inc = include_directories('include')
 
 wayland_client_dep = dependency('wayland-client')
-cglm_dep = dependency('cglm', fallback : ['cglm', 'cglm_dep'])
+cglm_dep = dependency('cglm')
 
 subdir('include')
 subdir('protocol')
