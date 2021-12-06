@@ -2,7 +2,8 @@
 
 #include "internal.h"
 
-void zsurface_log(const char* fmt, ...)
+WL_EXPORT void
+zsurf_log(const char* fmt, ...)
 {
   va_list argp;
   va_start(argp, fmt);

@@ -1,8 +1,8 @@
 project(
   'zsurface',
-  'c', 'cpp',
+  'c',
   license : 'Apache-2.0',
-  default_options : ['warning_level=3', 'werror=true', 'cpp_std=c++17', 'optimization=2'],
+  default_options : ['warning_level=3', 'werror=true', 'c_std=gnu11', 'optimization=2'],
   meson_version : '>= 0.57.0',
   version : '0.0.1',
 )
@@ -10,7 +10,8 @@ project(
 public_inc = include_directories('include')
 
 wayland_client_dep = dependency('wayland-client')
-cglm_dep = dependency('cglm', fallback : ['cglm', 'cglm_dep'])
+wayland_scanner_dep = dependency('wayland-scanner')
+cglm_dep = dependency('cglm')
 
 subdir('include')
 subdir('protocol')

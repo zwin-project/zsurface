@@ -3,7 +3,7 @@
 :toc: macro
 :toc-title:
 
-The library for surface like z client.
+The library for surface-like zigen client.
 
 toc::[]
 
