@@ -134,8 +134,9 @@ ray_button(void *data, struct zgn_ray *ray, uint32_t serial, uint32_t time,
   UNUSED(ray);
   struct zsurf_display *surface_display = data;
 
-  surface_display->interaface->pointer_button(
-      surface_display->user_data, serial, time, button, state);
+  if (surface_display->focus_view)
+    surface_display->interaface->pointer_button(
+        surface_display->user_data, serial, time, button, state);
 }
 
 static const struct zgn_ray_listener ray_listener = {
