@@ -6,6 +6,7 @@ deps_zsurface = [
 srcs_zsurface = files([
   'display.c',
   'toplevel.c',
+  'util.c',
   'view.c',
 ]) + [
   zigen_protocol_c,

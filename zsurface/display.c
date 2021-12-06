@@ -73,9 +73,9 @@ ray_leave(void *data, struct zgn_ray *ray, uint32_t serial,
   if (surface_display->focus_toplevel) {
     wl_list_remove(&surface_display->focus_toplevel_destroy_listener.link);
     wl_list_init(&surface_display->focus_toplevel_destroy_listener.link);
+    surface_display->focus_toplevel = NULL;
   }
 
-  surface_display->focus_toplevel = NULL;
   if (surface_display->focus_view) {
     surface_display->interaface->pointer_leave(
         surface_display->user_data, surface_display->focus_view);
@@ -152,8 +152,8 @@ keyboard_keymap(void *data, struct zgn_keyboard *keyboard, uint32_t format,
   UNUSED(keyboard);
   struct zsurf_display *surface_display = data;
 
-  // TODO: Handle the case wayland keymap format enum and z11 keymap format enum
-  // are not same.
+  // TODO: Handle the case wayland keymap format enum and zigen keymap format
+  // enum are not same.
 
   surface_display->interaface->keyboard_keymap(
       surface_display->user_data, format, fd, size);
@@ -316,10 +316,10 @@ zsurf_display_create(const char *socket,
   surface_display->user_data = user_data;
 
   surface_display->display = wl_display_connect(socket);
-  if (surface_display->display == NULL) goto err_surface;
+  if (surface_display->display == NULL) goto err_display;
 
   surface_display->registry = wl_display_get_registry(surface_display->display);
-  if (surface_display->registry == NULL) goto err_display;
+  if (surface_display->registry == NULL) goto err_registry;
 
   surface_display->ray = NULL;
   surface_display->keyboard = NULL;
@@ -347,10 +347,10 @@ zsurf_display_create(const char *socket,
   return surface_display;
 
 err_globals:
-err_display:
+err_registry:
   wl_display_disconnect(surface_display->display);
 
-err_surface:
+err_display:
   free(surface_display);
 
 err:
@@ -360,6 +360,8 @@ err:
 WL_EXPORT void
 zsurf_display_destroy(struct zsurf_display *surface_display)
 {
+  wl_list_remove(&surface_display->focus_toplevel_destroy_listener.link);
+  wl_list_remove(&surface_display->focus_view_destroy_listener.link);
   wl_display_disconnect(surface_display->display);
   free(surface_display);
 }

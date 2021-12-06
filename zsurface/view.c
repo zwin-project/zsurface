@@ -35,16 +35,8 @@ create_shared_fd(loff_t size)
 static int
 create_shared_text_fd(const char* text, loff_t size)
 {
-  const char* name = "zsurface-base";
-
-  int fd = memfd_create(name, MFD_CLOEXEC | MFD_ALLOW_SEALING);
+  int fd = create_shared_fd(size);
   if (fd < 0) return fd;
-  unlink(name);
-
-  if (ftruncate(fd, size) < 0) {
-    close(fd);
-    return -1;
-  }
 
   void* data = mmap(NULL, size, PROT_WRITE, MAP_SHARED, fd, 0);
   if (data == MAP_FAILED) {
@@ -127,10 +119,8 @@ zsurf_view_update_space_geom(
       view->component, view->vertex_buffer);
   zsurf_view_commit(view);
 
-  view->space_geometry.half_size[0] = half_size[0];
-  view->space_geometry.half_size[1] = half_size[1];
-  view->space_geometry.center[0] = center[0];
-  view->space_geometry.center[1] = center[1];
+  glm_vec2_copy(half_size, view->space_geometry.half_size);
+  glm_vec2_copy(center, view->space_geometry.center);
 }
 
 WL_EXPORT void*
@@ -157,15 +147,15 @@ WL_EXPORT void
 zsurf_view_add_frame_callback(struct zsurf_view* view,
     zsurf_view_frame_callback_func_t done_func, void* data)
 {
-  struct wl_callback* cb;
+  struct wl_callback* callback;
   struct zsurf_view_callback_data* callback_data;
-  cb = zgn_virtual_object_frame(view->toplevel->virtual_object);
+  callback = zgn_virtual_object_frame(view->toplevel->virtual_object);
 
   callback_data = zalloc(sizeof *callback_data);
   callback_data->data = data;
   callback_data->func = done_func;
 
-  wl_callback_add_listener(cb, &frame_callback_listener, callback_data);
+  wl_callback_add_listener(callback, &frame_callback_listener, callback_data);
 }
 
 WL_EXPORT int
@@ -213,7 +203,7 @@ zsurf_view_create(struct zsurf_display* surface_display,
   if (view == NULL) goto err;
 
   vertex_buffer_size = sizeof(*view->vertex_data);
-  texture_size = sizeof(struct zsurf_color_bgra);  // 1 px
+  texture_size = sizeof(struct zsurf_color_bgra);  // 1 px at the beginning
   shm_size = vertex_buffer_size + texture_size;
 
   fd = create_shared_fd(shm_size);
@@ -237,15 +227,15 @@ zsurf_view_create(struct zsurf_display* surface_display,
 
   vertex_buffer = zgn_opengl_create_vertex_buffer(surface_display->opengl);
 
-  vertex_buffer_buffer =
-      wl_shm_pool_create_buffer(pool, 0, shm_size, 1, shm_size, 0);
+  vertex_buffer_buffer = wl_shm_pool_create_buffer(
+      pool, 0, vertex_buffer_size, 1, vertex_buffer_size, 0);
 
   shader = zgn_opengl_create_shader_program(surface_display->opengl);
 
   texture = zgn_opengl_create_texture(surface_display->opengl);
 
-  texture_buffer = wl_shm_pool_create_buffer(pool, vertex_buffer_size, 1,
-      sizeof(struct zsurf_color_bgra), 1, WL_SHM_FORMAT_ARGB8888);
+  texture_buffer = wl_shm_pool_create_buffer(pool, vertex_buffer_size, 1, 1,
+      sizeof(struct zsurf_color_bgra), WL_SHM_FORMAT_ARGB8888);
 
   zgn_opengl_vertex_buffer_attach(vertex_buffer, vertex_buffer_buffer);
   zgn_opengl_component_attach_vertex_buffer(component, vertex_buffer);

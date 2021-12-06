@@ -1,11 +1,10 @@
-#include <stdio.h>
 #include <zsurface.h>
 
 #include "internal.h"
 
 #define PIXEL_SCALE 1000.0f       // 1000px = 1m
 #define SURFACE_THICKNESS 0.001f  // 1mm
-#define CUBOID_PADDING 0.05f      // 5cm
+#define FRAME_PADDING 0.05f       // 5cm
 
 static void
 cuboid_window_configure(void* data, struct zgn_cuboid_window* cuboid_window,
@@ -14,17 +13,18 @@ cuboid_window_configure(void* data, struct zgn_cuboid_window* cuboid_window,
   struct zsurf_toplevel* toplevel = data;
   vec2 view_half_size, zero = GLM_VEC2_ZERO_INIT;
 
+  // FIXME: ack_configure should be called by users.
   zgn_cuboid_window_ack_configure(cuboid_window, serial);
   if (cuboid_half_size->size != sizeof(float) * 3) {
-    fprintf(stderr,
+    zsurf_log(
         "zsurface: cuboid window half_size was given with invalid size\n");
     return;
   }
 
   {
     float* cuboid_half_size_vec = cuboid_half_size->data;
-    view_half_size[0] = cuboid_half_size_vec[0] - CUBOID_PADDING;
-    view_half_size[1] = cuboid_half_size_vec[1] - CUBOID_PADDING;
+    view_half_size[0] = cuboid_half_size_vec[0] - FRAME_PADDING;
+    view_half_size[1] = cuboid_half_size_vec[1] - FRAME_PADDING;
   }
 
   zsurf_view_update_space_geom(toplevel->view, view_half_size, zero);
@@ -47,10 +47,10 @@ view_commit_handler(struct zsurf_listener* listener, void* data)
     float* half_size_vec = wl_array_add(&half_size, sizeof(float) * 3);
     half_size_vec[0] =
         (float)toplevel->view->surface_geometry.width / 2.0f / PIXEL_SCALE +
-        CUBOID_PADDING;
+        FRAME_PADDING;
     half_size_vec[1] =
         (float)toplevel->view->surface_geometry.height / 2.0f / PIXEL_SCALE +
-        CUBOID_PADDING;
+        FRAME_PADDING;
     half_size_vec[2] = SURFACE_THICKNESS;
 
     toplevel->cuboid_window = zgn_shell_get_cuboid_window(
@@ -115,10 +115,10 @@ zsurf_toplevel_create(
 
   virtual_object =
       zgn_compositor_create_virtual_object(surface_display->compositor);
+  zgn_virtual_object_set_user_data(virtual_object, toplevel);
 
   toplevel->surface_display = surface_display;
   toplevel->virtual_object = virtual_object;
-  zgn_virtual_object_set_user_data(virtual_object, toplevel);
   toplevel->cuboid_window = NULL;
 
   view = zsurf_view_create(surface_display, toplevel, view_user_data);
@@ -134,6 +134,7 @@ zsurf_toplevel_create(
   return toplevel;
 
 err_view:
+  zgn_virtual_object_destroy(virtual_object);
   free(toplevel);
 
 err:
@@ -145,6 +146,8 @@ zsurf_toplevel_destroy(struct zsurf_toplevel* toplevel)
 {
   zsurf_signal_emit(&toplevel->destroy_signal, NULL);
   zsurf_view_destroy(toplevel->view);
+  if (toplevel->cuboid_window)
+    zgn_cuboid_window_destroy(toplevel->cuboid_window);
   zgn_virtual_object_destroy(toplevel->virtual_object);
   free(toplevel);
 }

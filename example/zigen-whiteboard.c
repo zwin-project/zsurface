@@ -11,8 +11,6 @@ struct app {
   struct zsurf_display *display;
   struct zsurf_toplevel *toplevel;
   struct zsurf_color_bgra texture[WIDTH][HEIGHT];
-  int8_t delta_blue;
-  uint8_t blue;
   struct {
     uint32_t x;
     uint32_t y;
@@ -123,9 +121,6 @@ frame(void *data, uint32_t callback_time)
 {
   (void)callback_time;
   struct app *app = data;
-  app->blue += app->delta_blue;
-  if (app->blue > UINT8_MAX - (int32_t)app->delta_blue) app->delta_blue = -1;
-  if (app->blue < 0 - (int32_t)app->delta_blue) app->delta_blue = 1;
   draw(app);
   next(app);
 }
@@ -206,9 +201,6 @@ init(struct app *app)
   }
 
   app->toplevel = zsurf_toplevel_create(app->display, &app);
-
-  app->delta_blue = 1;
-  app->blue = 0;
 
   app->pointer.enter = false;
   app->pointer.button = false;
