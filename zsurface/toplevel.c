@@ -11,7 +11,6 @@ cuboid_window_configure(void* data, struct zgn_cuboid_window* cuboid_window,
     uint32_t serial, struct wl_array* cuboid_half_size)
 {
   struct zsurf_toplevel* toplevel = data;
-  vec2 view_half_size, zero = GLM_VEC2_ZERO_INIT;
 
   // FIXME: ack_configure should be called by users.
   zgn_cuboid_window_ack_configure(cuboid_window, serial);
@@ -23,11 +22,15 @@ cuboid_window_configure(void* data, struct zgn_cuboid_window* cuboid_window,
 
   {
     float* cuboid_half_size_vec = cuboid_half_size->data;
-    view_half_size[0] = cuboid_half_size_vec[0] - FRAME_PADDING;
-    view_half_size[1] = cuboid_half_size_vec[1] - FRAME_PADDING;
+    toplevel->toplevel_view_half_size[0] =
+        cuboid_half_size_vec[0] - FRAME_PADDING;
+    toplevel->toplevel_view_half_size[1] =
+        cuboid_half_size_vec[1] - FRAME_PADDING;
   }
 
-  zsurf_view_update_space_geom(toplevel->view, view_half_size, zero);
+  zsurf_view_update_space_geom(toplevel->view);
+
+  zgn_virtual_object_commit(toplevel->virtual_object);
 }
 
 static const struct zgn_cuboid_window_listener cuboid_window_listener = {
@@ -121,13 +124,15 @@ zsurf_toplevel_create(
   toplevel->virtual_object = virtual_object;
   toplevel->cuboid_window = NULL;
 
-  view = zsurf_view_create(surface_display, toplevel, view_user_data);
+  view = zsurf_view_create(surface_display, toplevel, NULL, view_user_data);
   if (view == NULL) goto err_view;
 
   toplevel->view_commit_listener.notify = view_commit_handler;
   zsurf_signal_add(&view->commit_signal, &toplevel->view_commit_listener);
 
   zsurf_signal_init(&toplevel->destroy_signal);
+
+  glm_vec2_zero(toplevel->toplevel_view_half_size);
 
   toplevel->view = view;
 
