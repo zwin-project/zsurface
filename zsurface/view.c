@@ -380,7 +380,7 @@ zsurf_view_destroy(struct zsurf_view* view)
 
 static const char* vertex_shader =
     "#version 410\n"
-    "uniform mat4 mvp;\n"
+    "uniform mat4 zMVP;\n"
     "layout(location = 0) in vec4 position;\n"
     "layout(location = 1) in vec2 v2UVcoordsIn;\n"
     "layout(location = 2) in vec3 v3NormalIn;\n"
@@ -388,7 +388,7 @@ static const char* vertex_shader =
     "void main()\n"
     "{\n"
     "  v2UVcoords = v2UVcoordsIn;\n"
-    "  gl_Position = mvp * position;\n"
+    "  gl_Position = zMVP * position;\n"
     "}\n";
 
 static const char* fragment_shader =
