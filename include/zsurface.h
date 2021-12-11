@@ -71,6 +71,13 @@ struct zsurf_display_interface {
       void* data, uint32_t serial, uint32_t time, uint32_t key, uint32_t state);
 };
 
+/**
+ * data param can be NULL
+ */
+void zsurf_display_set_cursor(struct zsurf_display* surface_display,
+    struct zsurf_color_bgra* data, uint32_t width, uint32_t height,
+    int32_t hotspot_x, int32_t hotspot_y);
+
 struct zsurf_display* zsurf_display_create(const char* socket,
     const struct zsurf_display_interface* interface, void* user_data);
 

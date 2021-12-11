@@ -100,6 +100,8 @@ struct zsurf_view {
   void* user_data;
   struct zsurf_display* surface_display;
   struct zsurf_toplevel* toplevel;
+  struct zsurf_view* parent;  // null if it's toplevel view
+  int32_t z_index;
   enum zsurf_view_state state;
 
   struct {
@@ -110,6 +112,8 @@ struct zsurf_view {
   struct {
     uint32_t width;
     uint32_t height;
+    int32_t sx;
+    int32_t sy;
   } surface_geometry;
 
   int fd, vertex_shader_fd, fragment_shader_fd;
@@ -131,13 +135,19 @@ struct zsurf_view {
 
   struct zsurf_signal commit_signal;
   struct zsurf_signal destroy_signal;
+  struct zsurf_signal geometry_signal;
+
+  struct zsurf_listener parent_geometry_listener;
 };
 
-void zsurf_view_update_space_geom(
-    struct zsurf_view* view, vec2 half_size, vec2 center);
+void zsurf_view_update_space_geom(struct zsurf_view* view);
+
+void zsurf_view_update_surface_pos(
+    struct zsurf_view* view, int32_t sx, int32_t sy);
 
 struct zsurf_view* zsurf_view_create(struct zsurf_display* surface_display,
-    struct zsurf_toplevel* toplevel, void* user_data);
+    struct zsurf_toplevel* toplevel, struct zsurf_view* parent,
+    void* user_data);
 
 void zsurf_view_destroy(struct zsurf_view* view);
 
@@ -150,6 +160,8 @@ struct zsurf_toplevel {
 
   struct zsurf_listener view_commit_listener;
   struct zsurf_signal destroy_signal;
+
+  vec2 toplevel_view_half_size;
 };
 
 struct zsurf_view* zsurf_toplevel_pick_view(struct zsurf_toplevel* toplevel,
@@ -175,6 +187,13 @@ struct zsurf_display {
 
   struct zsurf_view* focus_view;
   struct zsurf_listener focus_view_destroy_listener;
+
+  struct {
+    struct zsurf_view* view;  // nullable
+    vec2 local_coord;
+    int32_t hotspot_x;
+    int32_t hotspot_y;
+  } cursor;
 };
 
 #endif  //  ZSURFACE_INTERNAL_H

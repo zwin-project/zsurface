@@ -110,6 +110,10 @@ ray_motion(void *data, struct zgn_ray *ray, uint32_t time,
         surface_display->user_data, surface_display->focus_view);
     wl_list_remove(&surface_display->focus_view_destroy_listener.link);
     wl_list_init(&surface_display->focus_view_destroy_listener.link);
+    if (surface_display->cursor.view) {
+      zsurf_view_destroy(surface_display->cursor.view);
+      surface_display->cursor.view = NULL;
+    }
   }
 
   if (view && surface_display->focus_view != view) {
@@ -120,8 +124,20 @@ ray_motion(void *data, struct zgn_ray *ray, uint32_t time,
   }
 
   if (view) {
+    glm_vec2_copy(local_coord, surface_display->cursor.local_coord);
     surface_display->interaface->pointer_motion(
         surface_display->user_data, time, local_coord[0], local_coord[1]);
+
+    if (surface_display->cursor.view) {
+      zsurf_view_update_surface_pos(surface_display->cursor.view,
+          surface_display->cursor.local_coord[0] -
+              surface_display->cursor.hotspot_x,
+          surface_display->cursor.local_coord[1] -
+              surface_display->cursor.hotspot_y);
+      zsurf_view_update_space_geom(surface_display->cursor.view);
+      zgn_virtual_object_commit(
+          surface_display->cursor.view->toplevel->virtual_object);
+    }
   }
 
   surface_display->focus_view = view;
@@ -240,6 +256,25 @@ seat_capabilities(void *data, struct zgn_seat *seat, uint32_t capabilities)
       zgn_ray_destroy(surface_display->ray);
       surface_display->ray = NULL;
     }
+
+    if (surface_display->focus_view) {
+      surface_display->interaface->pointer_leave(
+          surface_display->user_data, surface_display->focus_view);
+      wl_list_remove(&surface_display->focus_view_destroy_listener.link);
+      wl_list_init(&surface_display->focus_view_destroy_listener.link);
+      surface_display->focus_view = NULL;
+    }
+
+    if (surface_display->focus_toplevel) {
+      wl_list_remove(&surface_display->focus_toplevel_destroy_listener.link);
+      wl_list_init(&surface_display->focus_toplevel_destroy_listener.link);
+      surface_display->focus_toplevel = NULL;
+    }
+
+    if (surface_display->cursor.view) {
+      zsurf_view_destroy(surface_display->cursor.view);
+      surface_display->cursor.view = NULL;
+    }
   }
 
   if (capabilities & ZGN_SEAT_CAPABILITY_KEYBOARD) {
@@ -304,6 +339,36 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = zsurf_global_registry_remover,
 };
 
+WL_EXPORT void
+zsurf_display_set_cursor(struct zsurf_display *surface_display,
+    struct zsurf_color_bgra *data, uint32_t width, uint32_t height,
+    int32_t hotspot_x, int32_t hotspot_y)
+{
+  if (!surface_display->cursor.view) {
+    if (!surface_display->focus_view) return;
+    surface_display->cursor.view = zsurf_view_create(surface_display,
+        surface_display->focus_view->toplevel, surface_display->focus_view,
+        NULL);
+  } else if (data == NULL) {
+    zsurf_view_destroy(surface_display->cursor.view);
+    surface_display->cursor.view = NULL;
+    return;
+  }
+
+  surface_display->cursor.hotspot_x = hotspot_x;
+  surface_display->cursor.hotspot_y = hotspot_y;
+
+  zsurf_view_set_texture(surface_display->cursor.view, data, width, height);
+
+  zsurf_view_update_surface_pos(surface_display->cursor.view,
+      surface_display->cursor.local_coord[0] - hotspot_x,
+      surface_display->cursor.local_coord[1] - hotspot_y);
+
+  zsurf_view_update_space_geom(surface_display->cursor.view);
+
+  zsurf_view_commit(surface_display->cursor.view);
+}
+
 WL_EXPORT struct zsurf_display *
 zsurf_display_create(const char *socket,
     const struct zsurf_display_interface *interface, void *user_data)
@@ -361,6 +426,8 @@ err:
 WL_EXPORT void
 zsurf_display_destroy(struct zsurf_display *surface_display)
 {
+  if (surface_display->cursor.view)
+    zsurf_view_destroy(surface_display->cursor.view);
   wl_list_remove(&surface_display->focus_toplevel_destroy_listener.link);
   wl_list_remove(&surface_display->focus_view_destroy_listener.link);
   wl_display_disconnect(surface_display->display);

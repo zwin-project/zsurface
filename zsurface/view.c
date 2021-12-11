@@ -93,18 +93,60 @@ zsurf_view_resize_texture(
   return 0;
 }
 
-WL_EXPORT void
-zsurf_view_update_space_geom(
-    struct zsurf_view* view, vec2 half_size, vec2 center)
+static void
+zsurf_view_parent_geometry_handler(struct zsurf_listener* listener, void* data)
 {
+  UNUSED(data);
+  struct zsurf_view* view;
+
+  view = wl_container_of(listener, view, parent_geometry_listener);
+
+  zsurf_view_update_space_geom(view);
+}
+
+WL_EXPORT void
+zsurf_view_update_surface_pos(struct zsurf_view* view, int32_t sx, int32_t sy)
+{
+  view->surface_geometry.sx = sx;
+  view->surface_geometry.sy = sy;
+}
+
+WL_EXPORT void
+zsurf_view_update_space_geom(struct zsurf_view* view)
+{
+  vec2 half_size, center;
+
+  if (view->parent == NULL) {
+    glm_vec2_copy(view->toplevel->toplevel_view_half_size, half_size);
+    glm_vec2_zero(center);
+  } else {
+    half_size[0] = view->surface_geometry.width *
+                   view->parent->space_geometry.half_size[0] /
+                   view->parent->surface_geometry.width;
+    half_size[1] = view->surface_geometry.height *
+                   view->parent->space_geometry.half_size[1] /
+                   view->parent->surface_geometry.height;
+    center[0] =
+        ((float)view->surface_geometry.sx * 2 + view->surface_geometry.width -
+            view->parent->surface_geometry.width) *
+        view->parent->space_geometry.half_size[0] /
+        view->parent->surface_geometry.width;
+    center[1] =
+        ((float)view->parent->surface_geometry.height -
+            view->surface_geometry.sy * 2 - view->surface_geometry.height) *
+        view->parent->space_geometry.half_size[1] /
+        view->parent->surface_geometry.height;
+  }
+
+  float z = (float)view->z_index / 500;
   struct vertex A = {
-      {-half_size[0] + center[0], -half_size[1] + center[1], 0}, {0, 1}};
+      {-half_size[0] + center[0], -half_size[1] + center[1], z}, {0, 1}};
   struct vertex B = {
-      {+half_size[0] + center[0], -half_size[1] + center[1], 0}, {1, 1}};
+      {+half_size[0] + center[0], -half_size[1] + center[1], z}, {1, 1}};
   struct vertex C = {
-      {+half_size[0] + center[0], +half_size[1] + center[1], 0}, {1, 0}};
+      {+half_size[0] + center[0], +half_size[1] + center[1], z}, {1, 0}};
   struct vertex D = {
-      {-half_size[0] + center[0], +half_size[1] + center[1], 0}, {0, 0}};
+      {-half_size[0] + center[0], +half_size[1] + center[1], z}, {0, 0}};
 
   view->vertex_data->triangles[0].vertices[0] = A;
   view->vertex_data->triangles[0].vertices[1] = C;
@@ -117,7 +159,8 @@ zsurf_view_update_space_geom(
       view->vertex_buffer, view->vertex_buffer_buffer);
   zgn_opengl_component_attach_vertex_buffer(
       view->component, view->vertex_buffer);
-  zsurf_view_commit(view);
+
+  zsurf_signal_emit(&view->geometry_signal, NULL);
 
   glm_vec2_copy(half_size, view->space_geometry.half_size);
   glm_vec2_copy(center, view->space_geometry.center);
@@ -186,7 +229,7 @@ zsurf_view_commit(struct zsurf_view* view)
 
 WL_EXPORT struct zsurf_view*
 zsurf_view_create(struct zsurf_display* surface_display,
-    struct zsurf_toplevel* toplevel, void* user_data)
+    struct zsurf_toplevel* toplevel, struct zsurf_view* parent, void* user_data)
 {
   struct zsurf_view* view;
   int32_t fd, vertex_shader_fd, fragment_shader_fd;
@@ -263,6 +306,8 @@ zsurf_view_create(struct zsurf_display* surface_display,
   view->surface_display = surface_display;
   view->user_data = user_data;
   view->toplevel = toplevel;
+  view->parent = parent;
+  view->z_index = parent ? parent->z_index + 1 : 0;
   view->state = ZSURF_VIEW_STATE_NO_TEXTURE;
   view->space_geometry.half_size[0] = 0;
   view->space_geometry.half_size[1] = 0;
@@ -288,6 +333,13 @@ zsurf_view_create(struct zsurf_display* surface_display,
 
   zsurf_signal_init(&view->commit_signal);
   zsurf_signal_init(&view->destroy_signal);
+  zsurf_signal_init(&view->geometry_signal);
+
+  view->parent_geometry_listener.notify = zsurf_view_parent_geometry_handler;
+  if (parent)
+    zsurf_signal_add(&parent->geometry_signal, &view->parent_geometry_listener);
+  else
+    wl_list_init(&view->parent_geometry_listener.link);
 
   return view;
 
@@ -310,6 +362,7 @@ err:
 WL_EXPORT void
 zsurf_view_destroy(struct zsurf_view* view)
 {
+  wl_list_remove(&view->parent_geometry_listener.link);
   zsurf_signal_emit(&view->destroy_signal, NULL);
   zgn_opengl_texture_destroy(view->texture);
   zgn_opengl_shader_program_destroy(view->shader);
