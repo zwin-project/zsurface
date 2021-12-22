@@ -115,6 +115,20 @@ WL_EXPORT void
 zsurf_view_update_space_geom(struct zsurf_view* view)
 {
   vec2 half_size, center;
+  mat4 rotate;
+
+  glm_quat_mat4(view->toplevel->quaternion, rotate);
+
+  {
+    struct wl_array rotate_array;
+    wl_array_init(&rotate_array);
+    glm_mat4_to_wl_array(rotate, &rotate_array);
+    zgn_opengl_shader_program_set_uniform_float_matrix(
+        view->shader, "rotate", 4, 4, false, 1, &rotate_array);
+    wl_array_release(&rotate_array);
+  }
+
+  zgn_opengl_component_attach_shader_program(view->component, view->shader);
 
   if (view->parent == NULL) {
     glm_vec2_copy(view->toplevel->toplevel_view_half_size, half_size);
@@ -241,6 +255,7 @@ zsurf_view_create(struct zsurf_display* surface_display,
   struct wl_buffer *vertex_buffer_buffer, *texture_buffer;
   struct zgn_opengl_shader_program* shader;
   struct zgn_opengl_texture* texture;
+  mat4 uniform_rotate = GLM_MAT4_IDENTITY_INIT;
 
   view = zalloc(sizeof *view);
   if (view == NULL) goto err;
@@ -283,10 +298,20 @@ zsurf_view_create(struct zsurf_display* surface_display,
   zgn_opengl_vertex_buffer_attach(vertex_buffer, vertex_buffer_buffer);
   zgn_opengl_component_attach_vertex_buffer(component, vertex_buffer);
 
+  {
+    struct wl_array rotate;
+    wl_array_init(&rotate);
+    glm_mat4_to_wl_array(uniform_rotate, &rotate);
+    zgn_opengl_shader_program_set_uniform_float_matrix(
+        shader, "rotate", 4, 4, false, 1, &rotate);
+    wl_array_release(&rotate);
+  }
+
   zgn_opengl_shader_program_set_vertex_shader(
       shader, vertex_shader_fd, strlen(vertex_shader));
   zgn_opengl_shader_program_set_fragment_shader(
       shader, fragment_shader_fd, strlen(fragment_shader));
+
   zgn_opengl_shader_program_link(shader);
   zgn_opengl_component_attach_shader_program(component, shader);
 
@@ -381,6 +406,7 @@ zsurf_view_destroy(struct zsurf_view* view)
 static const char* vertex_shader =
     "#version 410\n"
     "uniform mat4 zMVP;\n"
+    "uniform mat4 rotate;\n"
     "layout(location = 0) in vec4 position;\n"
     "layout(location = 1) in vec2 v2UVcoordsIn;\n"
     "layout(location = 2) in vec3 v3NormalIn;\n"
@@ -388,7 +414,7 @@ static const char* vertex_shader =
     "void main()\n"
     "{\n"
     "  v2UVcoords = v2UVcoordsIn;\n"
-    "  gl_Position = zMVP * position;\n"
+    "  gl_Position = zMVP * rotate * position;\n"
     "}\n";
 
 static const char* fragment_shader =
