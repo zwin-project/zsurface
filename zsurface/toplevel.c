@@ -8,7 +8,8 @@
 
 static void
 cuboid_window_configure(void* data, struct zgn_cuboid_window* cuboid_window,
-    uint32_t serial, struct wl_array* cuboid_half_size)
+    uint32_t serial, struct wl_array* cuboid_half_size,
+    struct wl_array* quaternion_array)
 {
   struct zsurf_toplevel* toplevel = data;
 
@@ -28,13 +29,39 @@ cuboid_window_configure(void* data, struct zgn_cuboid_window* cuboid_window,
         cuboid_half_size_vec[1] - FRAME_PADDING;
   }
 
+  if (glm_versor_from_wl_array(toplevel->quaternion, quaternion_array) != 0) {
+    zsurf_log(
+        "zsurface: cuboid window quaternion was given with invalid size\n");
+    return;
+  }
+
   zsurf_view_update_space_geom(toplevel->view);
 
   zgn_virtual_object_commit(toplevel->virtual_object);
 }
 
+static void
+cuboid_window_moved(void* data, struct zgn_cuboid_window* cuboid_window,
+    struct wl_array* face_direction_array)
+{
+  UNUSED(data);
+  vec3 face_direction, front = {0.0f, 0.0f, 1.0f};
+  versor quaternion;
+  struct wl_array quaternion_array;
+
+  glm_vec3_from_wl_array(face_direction, face_direction_array);
+  glm_quat_from_vecs(front, face_direction, quaternion);
+
+  wl_array_init(&quaternion_array);
+  glm_versor_to_wl_array(quaternion, &quaternion_array);
+
+  zgn_cuboid_window_rotate(cuboid_window, &quaternion_array);
+  wl_array_release(&quaternion_array);
+}
+
 static const struct zgn_cuboid_window_listener cuboid_window_listener = {
     .configure = cuboid_window_configure,
+    .moved = cuboid_window_moved,
 };
 
 static void
@@ -45,8 +72,10 @@ view_commit_handler(struct zsurf_listener* listener, void* data)
       wl_container_of(listener, toplevel, view_commit_listener);
 
   if (toplevel->view->state == ZSURF_VIEW_STATE_FIRST_TEXTURE_ATTACHED) {
-    struct wl_array half_size;
+    struct wl_array half_size, quaternion_array;
     wl_array_init(&half_size);
+    wl_array_init(&quaternion_array);
+
     float* half_size_vec = wl_array_add(&half_size, sizeof(float) * 3);
     half_size_vec[0] =
         (float)toplevel->view->surface_geometry.width / 2.0f / PIXEL_SCALE +
@@ -56,11 +85,17 @@ view_commit_handler(struct zsurf_listener* listener, void* data)
         FRAME_PADDING;
     half_size_vec[2] = SURFACE_THICKNESS;
 
-    toplevel->cuboid_window = zgn_shell_get_cuboid_window(
-        toplevel->surface_display->shell, toplevel->virtual_object, &half_size);
+    glm_versor_to_wl_array(toplevel->quaternion, &quaternion_array);
+
+    toplevel->cuboid_window =
+        zgn_shell_get_cuboid_window(toplevel->surface_display->shell,
+            toplevel->virtual_object, &half_size, &quaternion_array);
+
     zgn_cuboid_window_add_listener(
         toplevel->cuboid_window, &cuboid_window_listener, toplevel);
+
     wl_array_release(&half_size);
+    wl_array_release(&quaternion_array);
   }
 
   zgn_virtual_object_commit(toplevel->virtual_object);
@@ -73,12 +108,18 @@ WL_EXPORT struct zsurf_view*
 zsurf_toplevel_pick_view(struct zsurf_toplevel* toplevel, vec3 ray_origin,
     vec3 ray_direction, vec2 local_coord)
 {
-  float mul = -ray_origin[2] / ray_direction[2];
+  vec3 rotated_ray_origin, rotated_ray_direction;
+  versor quat_inv;
+  glm_quat_inv(toplevel->quaternion, quat_inv);
+  glm_quat_rotatev(quat_inv, ray_origin, rotated_ray_origin);
+  glm_quat_rotatev(quat_inv, ray_direction, rotated_ray_direction);
+
+  float mul = -rotated_ray_origin[2] / rotated_ray_direction[2];
   struct zsurf_view* view = toplevel->view;
   if (mul <= 0) return NULL;
 
-  float x = ray_origin[0] + ray_direction[0] * mul;
-  float y = ray_origin[1] + ray_direction[1] * mul;
+  float x = rotated_ray_origin[0] + rotated_ray_direction[0] * mul;
+  float y = rotated_ray_origin[1] + rotated_ray_direction[1] * mul;
   float w0 = view->space_geometry.center[0] - view->space_geometry.half_size[0];
   float w1 = view->space_geometry.center[0] + view->space_geometry.half_size[0];
   float h0 = view->space_geometry.center[1] - view->space_geometry.half_size[1];
@@ -133,6 +174,7 @@ zsurf_toplevel_create(
   zsurf_signal_init(&toplevel->destroy_signal);
 
   glm_vec2_zero(toplevel->toplevel_view_half_size);
+  glm_quat_identity(toplevel->quaternion);
 
   toplevel->view = view;
 

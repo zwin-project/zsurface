@@ -68,6 +68,47 @@ glm_vec3_to_wl_array(vec3 v, struct wl_array* array)
   memcpy(data, v, sizeof(vec3));
 }
 
+static inline int
+glm_versor_from_wl_array(versor v, struct wl_array* array)
+{
+  float* data = array->data;
+  if (array->size != sizeof(versor)) return -1;
+  memcpy(v, data, sizeof(versor));
+  glm_quat_normalize(v);
+  return 0;
+}
+
+static inline void
+glm_versor_to_wl_array(versor v, struct wl_array* array)
+{
+  if (array->alloc > 0) {
+    wl_array_release(array);
+    wl_array_init(array);
+  }
+  float* data = wl_array_add(array, sizeof(versor));
+  memcpy(data, v, sizeof(versor));
+}
+
+static inline void
+glm_mat4_to_wl_array(mat4 m, struct wl_array* array)
+{
+  if (array->alloc > 0) {
+    wl_array_release(array);
+    wl_array_init(array);
+  }
+  float* data = wl_array_add(array, sizeof(mat4));
+  memcpy(data, m, sizeof(mat4));
+}
+
+static inline int
+glm_mat4_from_wl_array(mat4 m, struct wl_array* array)
+{
+  float* data = array->data;
+  if (array->size != sizeof(mat4)) return -1;
+  memcpy(m, data, sizeof(mat4));
+  return 0;
+}
+
 #define UNUSED(x) ((void)x)
 
 static inline void*
@@ -162,6 +203,7 @@ struct zsurf_toplevel {
   struct zsurf_signal destroy_signal;
 
   vec2 toplevel_view_half_size;
+  versor quaternion;
 };
 
 struct zsurf_view* zsurf_toplevel_pick_view(struct zsurf_toplevel* toplevel,
