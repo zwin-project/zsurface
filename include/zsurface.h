@@ -69,6 +69,9 @@ struct zsurf_display_interface {
   void (*keyboard_leave)(void* data, uint32_t serial, struct zsurf_view* view);
   void (*keyboard_key)(
       void* data, uint32_t serial, uint32_t time, uint32_t key, uint32_t state);
+  void (*keyboard_modifiers)(void* data, uint32_t serial,
+      uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
+      uint32_t group);
 };
 
 /**

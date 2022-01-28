@@ -223,13 +223,11 @@ keyboard_modifiers(void *data, struct zgn_keyboard *keyboard, uint32_t serial,
     uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
     uint32_t group)
 {
-  UNUSED(data);
   UNUSED(keyboard);
-  UNUSED(serial);
-  UNUSED(mods_depressed);
-  UNUSED(mods_latched);
-  UNUSED(mods_locked);
-  UNUSED(group);
+  struct zsurf_display *surface_display = data;
+
+  surface_display->interaface->keyboard_modifiers(surface_display->user_data,
+      serial, mods_depressed, mods_latched, mods_locked, group);
 }
 
 static const struct zgn_keyboard_listener keyboard_listener = {
