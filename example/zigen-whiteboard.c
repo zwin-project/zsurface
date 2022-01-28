@@ -117,6 +117,18 @@ keyboard_key(
 }
 
 static void
+keyboard_modifiers(void *data, uint32_t serial, uint32_t mods_depressed,
+    uint32_t mods_latched, uint32_t mods_locked, uint32_t group)
+{
+  (void)data;
+  (void)serial;
+  (void)mods_depressed;
+  (void)mods_latched;
+  (void)mods_locked;
+  (void)group;
+}
+
+static void
 frame(void *data, uint32_t callback_time)
 {
   (void)callback_time;
@@ -188,6 +200,7 @@ static const struct zsurf_display_interface display_interface = {
     .keyboard_enter = keyboard_enter,
     .keyboard_leave = keyboard_leave,
     .keyboard_key = keyboard_key,
+    .keyboard_modifiers = keyboard_modifiers,
 };
 
 static int
