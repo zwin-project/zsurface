@@ -1,7 +1,7 @@
 project(
   'zsurface',
   'c',
-  license : 'Apache-2.0',
+  license : 'MIT',
   default_options : ['warning_level=3', 'werror=true', 'c_std=gnu11', 'optimization=2'],
   meson_version : '>= 0.57.0',
   version : '0.0.1',

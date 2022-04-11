@@ -10,4 +10,4 @@ toc::[]
 [#license]
 == LICENSE
 
-Licensed under Apache-2.0, see link:LICENSE[LICENSE]
+Licensed under MIT, see link:LICENSE[LICENSE]
